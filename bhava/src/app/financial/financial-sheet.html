@@ -1,0 +1,492 @@
+<div class="financial-sheet">
+  <!-- Header -->
+  <div class="financial-header">
+    <div class="header-content">
+      <div class="breadcrumb">
+        <span routerLink="/dashboard" class="breadcrumb-link">Dashboard</span>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">Financial Sheet</span>
+      </div>
+      <h1 class="page-title">Vendor Financial Sheet</h1>
+      <p class="page-subtitle" *ngIf="vendor">
+        Financial overview for {{ vendor.vendorName }} ({{ vendor.vendorId }})
+      </p>
+    </div>
+  </div>
+
+  <!-- Financial Summary Overview -->
+  <div class="financial-summary" *ngIf="activeTab === 'overview'">
+    <div class="summary-grid" *ngIf="!isLoadingSummary && financialSummary">
+      <div class="summary-card">
+        <div class="card-icon">💰</div>
+        <div class="card-content">
+          <h3>Total Invoiced</h3>
+          <p class="amount">{{ formatCurrency(financialSummary.totalInvoiced) }}</p>
+        </div>
+      </div>
+      
+      <div class="summary-card">
+        <div class="card-icon">✅</div>
+        <div class="card-content">
+          <h3>Total Paid</h3>
+          <p class="amount success">{{ formatCurrency(financialSummary.totalPaid) }}</p>
+        </div>
+      </div>
+      
+      <div class="summary-card">
+        <div class="card-icon">⏳</div>
+        <div class="card-content">
+          <h3>Outstanding</h3>
+          <p class="amount warning">{{ formatCurrency(financialSummary.totalOutstanding) }}</p>
+        </div>
+      </div>
+      
+      <div class="summary-card">
+        <div class="card-icon">⚠️</div>
+        <div class="card-content">
+          <h3>Overdue</h3>
+          <p class="amount danger">{{ formatCurrency(financialSummary.overdueAmount) }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detailed Summary -->
+    <div class="detailed-summary" *ngIf="!isLoadingSummary && financialSummary">
+      <div class="summary-section">
+        <h3>Payment Statistics</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Average Payment Days:</span>
+            <span class="stat-value">{{ financialSummary.averagePaymentDays }} days</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Last Payment:</span>
+            <span class="stat-value">{{ financialSummary.lastPaymentDate | date:'mediumDate' }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Next Due Date:</span>
+            <span class="stat-value">{{ financialSummary.nextDueDate | date:'mediumDate' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary-section">
+        <h3>Invoice Summary</h3>
+        <div class="invoice-counts">
+          <span class="count-item">
+            <strong>{{ financialSummary.invoiceCount.total }}</strong> Total
+          </span>
+          <span class="count-item pending">
+            <strong>{{ financialSummary.invoiceCount.pending }}</strong> Pending
+          </span>
+          <span class="count-item paid">
+            <strong>{{ financialSummary.invoiceCount.paid }}</strong> Paid
+          </span>
+          <span class="count-item overdue">
+            <strong>{{ financialSummary.invoiceCount.overdue }}</strong> Overdue
+          </span>
+        </div>
+      </div>
+
+      <div class="summary-section">
+        <h3>Credit/Debit Memos</h3>
+        <div class="memo-summary">
+          <div class="memo-item">
+            <span class="memo-type credit">Credit Memos:</span>
+            <span class="memo-count">{{ financialSummary.memoCount.creditMemos }}</span>
+            <span class="memo-amount">{{ formatCurrency(financialSummary.creditMemoTotal) }}</span>
+          </div>
+          <div class="memo-item">
+            <span class="memo-type debit">Debit Memos:</span>
+            <span class="memo-count">{{ financialSummary.memoCount.debitMemos }}</span>
+            <span class="memo-amount">{{ formatCurrency(financialSummary.debitMemoTotal) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aging Report Summary -->
+    <div class="aging-summary" *ngIf="!isLoadingAging && agingReport">
+      <h3>Aging Report Summary</h3>
+      <div class="aging-chart">
+        <div class="aging-bucket" *ngFor="let bucket of agingReport.agingBuckets">
+          <div class="bucket-header">
+            <span class="bucket-period">{{ bucket.periodDescription }}</span>
+            <span class="bucket-percentage">{{ bucket.percentage }}%</span>
+          </div>
+          <div class="bucket-bar">
+            <div class="bar-fill" [style.width.%]="bucket.percentage"></div>
+          </div>
+          <div class="bucket-details">
+            <span class="bucket-amount">{{ formatCurrency(bucket.amount) }}</span>
+            <span class="bucket-count">({{ bucket.invoiceCount }} invoices)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading states -->
+    <div class="loading-container" *ngIf="isLoadingSummary || isLoadingAging">
+      <div class="loading-spinner"></div>
+      <p>Loading financial summary...</p>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="tab-navigation">
+    <button 
+      class="tab-button" 
+      [class.active]="activeTab === 'overview'"
+      (click)="setActiveTab('overview')">
+      Overview
+    </button>
+    <button 
+      class="tab-button" 
+      [class.active]="activeTab === 'invoices'"
+      (click)="setActiveTab('invoices')">
+      Invoice Details
+    </button>
+    <button 
+      class="tab-button" 
+      [class.active]="activeTab === 'payments'"
+      (click)="setActiveTab('payments')">
+      Payments & Aging
+    </button>
+    <button 
+      class="tab-button" 
+      [class.active]="activeTab === 'memos'"
+      (click)="setActiveTab('memos')">
+      Credit/Debit Memos
+    </button>
+  </div>
+
+  <!-- Invoice Details Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'invoices'">
+    <div class="content-header">
+      <h2>Invoice Details</h2>
+      <div class="actions">
+        <input 
+          type="text" 
+          placeholder="Search invoices..." 
+          class="search-input"
+          [(ngModel)]="searchTerm"
+          (keyup.enter)="onSearch()">
+        <button class="btn btn-primary" (click)="onSearch()">Search</button>
+      </div>
+    </div>
+
+    <!-- Invoice Filters -->
+    <form [formGroup]="invoiceFilterForm" class="filter-form" (ngSubmit)="onFilterChange()">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Status:</label>
+          <select formControlName="status">
+            <option value="">All Statuses</option>
+            <option value="DRAFT">Draft</option>
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>Payment Status:</label>
+          <select formControlName="paymentStatus">
+            <option value="">All Payment Status</option>
+            <option value="OPEN">Open</option>
+            <option value="PAID">Paid</option>
+            <option value="PARTIAL">Partial</option>
+            <option value="OVERDUE">Overdue</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>From Date:</label>
+          <input type="date" formControlName="dateFrom">
+        </div>
+        
+        <div class="filter-group">
+          <label>To Date:</label>
+          <input type="date" formControlName="dateTo">
+        </div>
+        
+        <div class="filter-actions">
+          <button type="submit" class="btn btn-secondary">Apply Filters</button>
+          <button type="button" class="btn btn-link" (click)="invoiceFilterForm.reset(); onFilterChange()">Clear</button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Invoice Table -->
+    <div class="data-table" *ngIf="!isLoadingInvoices">
+      <table>
+        <thead>
+          <tr>
+            <th>Invoice Number</th>
+            <th>PO Number</th>
+            <th>Invoice Date</th>
+            <th>Due Date</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Payment Status</th>
+            <th>Days Outstanding</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let invoice of invoices">
+            <td>{{ invoice.invoiceNumber }}</td>
+            <td>{{ invoice.poNumber }}</td>
+            <td>{{ invoice.invoiceDate | date:'shortDate' }}</td>
+            <td>{{ invoice.dueDate | date:'shortDate' }}</td>
+            <td>{{ formatCurrency(invoice.grossAmount) }}</td>
+            <td>
+              <span class="status-badge" [class]="getStatusClass(invoice.status)">
+                {{ invoice.status }}
+              </span>
+            </td>
+            <td>
+              <span class="status-badge" [class]="getStatusClass(invoice.paymentStatus)">
+                {{ invoice.paymentStatus }}
+              </span>
+            </td>
+            <td>
+              <span [class]="getAgingClass(calculateAging(invoice.invoiceDate, invoice.dueDate))">
+                {{ calculateAging(invoice.invoiceDate, invoice.dueDate) }} days
+              </span>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-link">View</button>
+              <button class="btn btn-sm btn-link">Download</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Loading state for invoices -->
+    <div class="loading-container" *ngIf="isLoadingInvoices">
+      <div class="loading-spinner"></div>
+      <p>Loading invoices...</p>
+    </div>
+  </div>
+
+  <!-- Payments & Aging Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'payments'">
+    <div class="content-header">
+      <h2>Payments & Aging</h2>
+    </div>
+
+    <!-- Payment Filters -->
+    <form [formGroup]="paymentFilterForm" class="filter-form" (ngSubmit)="onFilterChange()">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Payment Method:</label>
+          <select formControlName="paymentMethod">
+            <option value="">All Methods</option>
+            <option value="BANK_TRANSFER">Bank Transfer</option>
+            <option value="CHECK">Check</option>
+            <option value="ACH">ACH</option>
+            <option value="WIRE">Wire Transfer</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>From Date:</label>
+          <input type="date" formControlName="dateFrom">
+        </div>
+        
+        <div class="filter-group">
+          <label>To Date:</label>
+          <input type="date" formControlName="dateTo">
+        </div>
+        
+        <div class="filter-actions">
+          <button type="submit" class="btn btn-secondary">Apply Filters</button>
+          <button type="button" class="btn btn-link" (click)="paymentFilterForm.reset(); onFilterChange()">Clear</button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Aging Report -->
+    <div class="aging-report" *ngIf="!isLoadingAging && agingReport">
+      <h3>Aging Report</h3>
+      <div class="aging-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Period</th>
+              <th>Amount</th>
+              <th>Invoice Count</th>
+              <th>Percentage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let bucket of agingReport.agingBuckets">
+              <td>{{ bucket.periodDescription }}</td>
+              <td>{{ formatCurrency(bucket.amount) }}</td>
+              <td>{{ bucket.invoiceCount }}</td>
+              <td>{{ bucket.percentage }}%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Payment History Table -->
+    <div class="data-table" *ngIf="!isLoadingPayments">
+      <h3>Payment History</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Payment ID</th>
+            <th>Payment Date</th>
+            <th>Invoice Numbers</th>
+            <th>Amount</th>
+            <th>Payment Method</th>
+            <th>Reference</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let payment of payments">
+            <td>{{ payment.paymentId }}</td>
+            <td>{{ payment.paymentDate | date:'shortDate' }}</td>
+            <td>{{ payment.invoiceNumbers.join(', ') }}</td>
+            <td>{{ formatCurrency(payment.totalAmount) }}</td>
+            <td>{{ payment.paymentMethod }}</td>
+            <td>{{ payment.paymentReference }}</td>
+            <td>
+              <span class="status-badge" [class]="getStatusClass(payment.status)">
+                {{ payment.status }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Loading states -->
+    <div class="loading-container" *ngIf="isLoadingPayments || isLoadingAging">
+      <div class="loading-spinner"></div>
+      <p>Loading payment data...</p>
+    </div>
+  </div>
+
+  <!-- Credit/Debit Memos Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'memos'">
+    <div class="content-header">
+      <h2>Credit/Debit Memos</h2>
+    </div>
+
+    <!-- Memo Filters -->
+    <form [formGroup]="memoFilterForm" class="filter-form" (ngSubmit)="onFilterChange()">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Memo Type:</label>
+          <select formControlName="memoType">
+            <option value="">All Types</option>
+            <option value="CREDIT_MEMO">Credit Memo</option>
+            <option value="DEBIT_MEMO">Debit Memo</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>Status:</label>
+          <select formControlName="status">
+            <option value="">All Statuses</option>
+            <option value="DRAFT">Draft</option>
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>From Date:</label>
+          <input type="date" formControlName="dateFrom">
+        </div>
+        
+        <div class="filter-group">
+          <label>To Date:</label>
+          <input type="date" formControlName="dateTo">
+        </div>
+        
+        <div class="filter-actions">
+          <button type="submit" class="btn btn-secondary">Apply Filters</button>
+          <button type="button" class="btn btn-link" (click)="memoFilterForm.reset(); onFilterChange()">Clear</button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Memos Table -->
+    <div class="data-table" *ngIf="!isLoadingMemos">
+      <table>
+        <thead>
+          <tr>
+            <th>Memo Number</th>
+            <th>Type</th>
+            <th>Reference Invoice</th>
+            <th>Memo Date</th>
+            <th>Amount</th>
+            <th>Reason</th>
+            <th>Status</th>
+            <th>Created By</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let memo of memos">
+            <td>{{ memo.memoNumber }}</td>
+            <td>
+              <span class="memo-type-badge" [class]="memo.memoType === 'CREDIT_MEMO' ? 'credit' : 'debit'">
+                {{ memo.memoType === 'CREDIT_MEMO' ? 'Credit' : 'Debit' }}
+              </span>
+            </td>
+            <td>{{ memo.referenceInvoice }}</td>
+            <td>{{ memo.memoDate | date:'shortDate' }}</td>
+            <td>{{ formatCurrency(memo.amount) }}</td>
+            <td>{{ memo.reason }}</td>
+            <td>
+              <span class="status-badge" [class]="getStatusClass(memo.status)">
+                {{ memo.status }}
+              </span>
+            </td>
+            <td>{{ memo.createdBy }}</td>
+            <td>
+              <button class="btn btn-sm btn-link">View</button>
+              <button class="btn btn-sm btn-link">Download</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Loading state for memos -->
+    <div class="loading-container" *ngIf="isLoadingMemos">
+      <div class="loading-spinner"></div>
+      <p>Loading memos...</p>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" *ngIf="totalRecords > pageSize && activeTab !== 'overview'">
+    <button 
+      class="pagination-btn" 
+      [disabled]="currentPage === 1"
+      (click)="onPageChange(currentPage - 1)">
+      Previous
+    </button>
+    
+    <span class="pagination-info">
+      Page {{ currentPage }} of {{ Math.ceil(totalRecords / pageSize) }}
+    </span>
+    
+    <button 
+      class="pagination-btn" 
+      [disabled]="currentPage >= Math.ceil(totalRecords / pageSize)"
+      (click)="onPageChange(currentPage + 1)">
+      Next
+    </button>
+  </div>
+</div>

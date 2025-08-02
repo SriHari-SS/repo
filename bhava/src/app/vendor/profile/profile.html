@@ -1,0 +1,755 @@
+<div class="profile-container">
+  <!-- Header -->
+  <header class="profile-header">
+    <div class="header-content">
+      <div class="header-left">
+        <button class="back-button" (click)="goToDashboard()" title="Back to Dashboard">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 12H5M12 19L5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="header-info">
+          <h1>Vendor Profile</h1>
+          <p class="subtitle" *ngIf="vendorProfile">{{ vendorProfile.companyName }}</p>
+        </div>
+      </div>
+      
+      <div class="header-actions">
+        <div class="sync-info" *ngIf="lastSyncDate">
+          <span class="sync-label">Last synced:</span>
+          <span class="sync-time">{{ formatDateTime(lastSyncDate) }}</span>
+        </div>
+        <button 
+          class="refresh-button" 
+          (click)="refreshProfile()" 
+          [disabled]="isLoading"
+          title="Refresh from SAP"
+        >
+          <svg [class.spinning]="isLoading" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 4V10H7M23 20V14H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20.49 9C20.1 7.68 19.4 6.47 18.39 5.5C17.38 4.53 16.1 3.85 14.73 3.52C13.36 3.19 11.93 3.22 10.57 3.61C9.21 4 7.97 4.74 6.97 5.76L1 10M23 14L17.03 18.24C16.03 19.26 14.79 20 13.43 20.39C12.07 20.78 10.64 20.81 9.27 20.48C7.9 20.15 6.62 19.47 5.61 18.5C4.6 17.53 3.9 16.32 3.51 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="isLoading">
+    <div class="loading-spinner">
+      <svg class="spinner" width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-dasharray="31.416" stroke-dashoffset="31.416">
+          <animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/>
+          <animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416" repeatCount="indefinite"/>
+        </circle>
+      </svg>
+    </div>
+    <p>Loading vendor profile from SAP ERP system...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-container" *ngIf="errorMessage && !isLoading">
+    <div class="error-content">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+        <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h3>Unable to Load Profile</h3>
+      <p>{{ errorMessage }}</p>
+      <button class="retry-button" (click)="refreshProfile()">
+        Try Again
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="profile-main" *ngIf="vendorProfile && !isLoading">
+    <!-- Status Overview -->
+    <section class="status-section">
+      <div class="status-card">
+        <div class="status-header">
+          <h2>Account Status</h2>
+          <div class="status-badges">
+            <span class="status-badge" [class]="getStatusBadgeClass(vendorProfile.approvalStatus)">
+              {{ vendorProfile.approvalStatus }}
+            </span>
+            <span class="status-badge" [class]="getStatusBadgeClass(vendorProfile.status)" *ngIf="vendorProfile.blockingStatus">
+              Blocked: {{ vendorProfile.blockingStatus }}
+            </span>
+          </div>
+        </div>
+        <div class="status-info">
+          <div class="info-item">
+            <span class="label">Vendor ID:</span>
+            <span class="value">{{ vendorProfile.vendorId }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Account Group:</span>
+            <span class="value">{{ vendorProfile.accountGroup }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Created:</span>
+            <span class="value">{{ formatDate(vendorProfile.createdDate) }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav class="profile-tabs">
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'overview'"
+        (click)="setActiveTab('overview')"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Overview
+      </button>
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'contact'"
+        (click)="setActiveTab('contact')"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Contact
+      </button>
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'address'"
+        (click)="setActiveTab('address')"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M21 10C21 17 12 23 12 23S3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.3639 3.63604C20.0518 5.32387 21 7.61305 21 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Addresses
+      </button>
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'banking'"
+        (click)="setActiveTab('banking')"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="1" y1="10" x2="23" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Banking
+      </button>
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'compliance'"
+        (click)="setActiveTab('compliance')"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Compliance
+      </button>
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'documents'"
+        (click)="setActiveTab('documents')"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Documents
+      </button>
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'customer'"
+        (click)="setActiveTab('customer')"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16 21V19C16 17.9391 15.5786 16.9217 14.8284 16.1716C14.0783 15.4214 13.0609 15 12 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="8.5" cy="7" r="4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 8V6C20 5.46957 19.7893 4.96086 19.4142 4.58579C19.0391 4.21071 18.5304 4 18 4H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M23 11L20 8L17 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Customer Profile
+      </button>
+    </nav>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- Overview Tab -->
+      <div class="tab-panel" *ngIf="activeTab === 'overview'">
+        <div class="overview-grid">
+          <!-- Company Information -->
+          <div class="info-card">
+            <h3>Company Information</h3>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="label">Company Name</span>
+                <span class="value">{{ vendorProfile.companyName }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Company Code</span>
+                <span class="value">{{ vendorProfile.companyCode }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Registration Number</span>
+                <span class="value">{{ vendorProfile.registrationNumber }}</span>
+              </div>
+              <div class="info-item" *ngIf="vendorProfile.vatNumber">
+                <span class="label">VAT Number</span>
+                <span class="value">{{ vendorProfile.vatNumber }}</span>
+              </div>
+              <div class="info-item" *ngIf="vendorProfile.taxId">
+                <span class="label">Tax ID</span>
+                <span class="value">{{ vendorProfile.taxId }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Business Type</span>
+                <span class="value">{{ vendorProfile.businessType }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Financial Information -->
+          <div class="info-card">
+            <h3>Financial Information</h3>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="label">Currency</span>
+                <span class="value">{{ vendorProfile.currency }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Payment Terms</span>
+                <span class="value">{{ vendorProfile.paymentTerms }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Credit Limit</span>
+                <span class="value">{{ formatCurrency(vendorProfile.creditLimit, vendorProfile.currency) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Reconciliation Account</span>
+                <span class="value">{{ vendorProfile.reconAccount }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- SAP Information -->
+          <div class="info-card">
+            <h3>SAP Information</h3>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="label">Vendor Group</span>
+                <span class="value">{{ vendorProfile.sapVendorGroup }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Account Group</span>
+                <span class="value">{{ vendorProfile.accountGroup }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Purchasing Organizations</span>
+                <span class="value">{{ vendorProfile.purchasingOrganization.join(', ') }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Industry Code</span>
+                <span class="value">{{ vendorProfile.industryCode }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact Tab -->
+      <div class="tab-panel" *ngIf="activeTab === 'contact'">
+        <div class="contact-grid">
+          <!-- Primary Contact -->
+          <div class="contact-card primary">
+            <h3>Primary Contact</h3>
+            <div class="contact-info">
+              <div class="contact-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>{{ vendorProfile.primaryContactName }}</span>
+              </div>
+              <div class="contact-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <a href="mailto:{{ vendorProfile.primaryContactEmail }}">{{ vendorProfile.primaryContactEmail }}</a>
+              </div>
+              <div class="contact-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M22 16.92V19.92C22.0011 20.1985 21.9441 20.4742 21.8325 20.7293C21.7209 20.9845 21.5573 21.2136 21.3521 21.4019C21.1468 21.5901 20.9046 21.7335 20.6407 21.8227C20.3769 21.9119 20.0973 21.9451 19.82 21.92C16.7428 21.5856 13.787 20.5341 11.19 18.85C8.77382 17.3147 6.72533 15.2662 5.18999 12.85C3.49997 10.2412 2.44824 7.27099 2.11999 4.18C2.095 3.90347 2.12787 3.62476 2.21649 3.36162C2.30512 3.09849 2.44756 2.85669 2.63476 2.65162C2.82196 2.44655 3.0498 2.28271 3.30379 2.17052C3.55777 2.05833 3.83233 2.00026 4.10999 2H7.10999C7.59531 1.99522 8.06762 2.16708 8.43828 2.48353C8.80894 2.79999 9.04821 3.23945 9.10999 3.72C9.22399 4.68007 9.47999 5.62273 9.86999 6.52C10.001 6.85407 10.0209 7.22117 9.92474 7.56625C9.82861 7.91134 9.62404 8.21901 9.33999 8.44L8.08999 9.69C9.51355 12.1636 11.8364 14.4864 14.31 15.91L15.56 14.66C15.781 14.376 16.0887 14.1714 16.4337 14.0753C16.7788 13.9791 17.1459 13.999 17.48 14.13C18.3773 14.52 19.3199 14.776 20.28 14.89C20.7658 14.9518 21.2094 15.1946 21.5265 15.5706C21.8437 15.9465 22.0122 16.4207 21.9999 16.91V16.92Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <a href="tel:{{ vendorProfile.primaryContactPhone }}">{{ vendorProfile.primaryContactPhone }}</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secondary Contact -->
+          <div class="contact-card secondary" *ngIf="vendorProfile.secondaryContactName">
+            <h3>Secondary Contact</h3>
+            <div class="contact-info">
+              <div class="contact-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>{{ vendorProfile.secondaryContactName }}</span>
+              </div>
+              <div class="contact-item" *ngIf="vendorProfile.secondaryContactEmail">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <a href="mailto:{{ vendorProfile.secondaryContactEmail }}">{{ vendorProfile.secondaryContactEmail }}</a>
+              </div>
+              <div class="contact-item" *ngIf="vendorProfile.secondaryContactPhone">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M22 16.92V19.92C22.0011 20.1985 21.9441 20.4742 21.8325 20.7293C21.7209 20.9845 21.5573 21.2136 21.3521 21.4019C21.1468 21.5901 20.9046 21.7335 20.6407 21.8227C20.3769 21.9119 20.0973 21.9451 19.82 21.92C16.7428 21.5856 13.787 20.5341 11.19 18.85C8.77382 17.3147 6.72533 15.2662 5.18999 12.85C3.49997 10.2412 2.44824 7.27099 2.11999 4.18C2.095 3.90347 2.12787 3.62476 2.21649 3.36162C2.30512 3.09849 2.44756 2.85669 2.63476 2.65162C2.82196 2.44655 3.0498 2.28271 3.30379 2.17052C3.55777 2.05833 3.83233 2.00026 4.10999 2H7.10999C7.59531 1.99522 8.06762 2.16708 8.43828 2.48353C8.80894 2.79999 9.04821 3.23945 9.10999 3.72C9.22399 4.68007 9.47999 5.62273 9.86999 6.52C10.001 6.85407 10.0209 7.22117 9.92474 7.56625C9.82861 7.91134 9.62404 8.21901 9.33999 8.44L8.08999 9.69C9.51355 12.1636 11.8364 14.4864 14.31 15.91L15.56 14.66C15.781 14.376 16.0887 14.1714 16.4337 14.0753C16.7788 13.9791 17.1459 13.999 17.48 14.13C18.3773 14.52 19.3199 14.776 20.28 14.89C20.7658 14.9518 21.2094 15.1946 21.5265 15.5706C21.8437 15.9465 22.0122 16.4207 21.9999 16.91V16.92Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <a href="tel:{{ vendorProfile.secondaryContactPhone }}">{{ vendorProfile.secondaryContactPhone }}</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Address Tab -->
+      <div class="tab-panel" *ngIf="activeTab === 'address'">
+        <div class="address-grid">
+          <div class="address-card" *ngFor="let address of vendorProfile.addresses">
+            <div class="address-header">
+              <div class="address-type">
+                <span class="type-icon">{{ getAddressTypeIcon(address.type) }}</span>
+                <span class="type-label">{{ address.type.replace('_', ' ') }}</span>
+                <span class="primary-badge" *ngIf="address.isPrimary">Primary</span>
+              </div>
+            </div>
+            <div class="address-content">
+              <h4>{{ address.name }}</h4>
+              <div class="address-details">
+                <p>{{ address.street }}</p>
+                <p>{{ address.city }}, {{ address.state }} {{ address.postalCode }}</p>
+                <p>{{ address.country }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Banking Tab -->
+      <div class="tab-panel" *ngIf="activeTab === 'banking'">
+        <div class="banking-grid">
+          <div class="bank-card" *ngFor="let bank of vendorProfile.bankDetails">
+            <div class="bank-header">
+              <h4>{{ bank.bankName }}</h4>
+              <span class="primary-badge" *ngIf="bank.isPrimary">Primary</span>
+            </div>
+            <div class="bank-details">
+              <div class="bank-item">
+                <span class="label">Account Number</span>
+                <span class="value">{{ bank.accountNumber }}</span>
+              </div>
+              <div class="bank-item">
+                <span class="label">Bank Code</span>
+                <span class="value">{{ bank.bankCode }}</span>
+              </div>
+              <div class="bank-item" *ngIf="bank.iban">
+                <span class="label">IBAN</span>
+                <span class="value">{{ bank.iban }}</span>
+              </div>
+              <div class="bank-item" *ngIf="bank.swiftCode">
+                <span class="label">SWIFT Code</span>
+                <span class="value">{{ bank.swiftCode }}</span>
+              </div>
+              <div class="bank-item">
+                <span class="label">Currency</span>
+                <span class="value">{{ bank.currency }}</span>
+              </div>
+              <div class="bank-item">
+                <span class="label">Account Type</span>
+                <span class="value">{{ bank.accountType }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compliance Tab -->
+      <div class="tab-panel" *ngIf="activeTab === 'compliance'">
+        <div class="compliance-grid">
+          <div class="certification-card" *ngFor="let cert of vendorProfile.certifications">
+            <div class="cert-header">
+              <div class="cert-info">
+                <span class="cert-icon">{{ getCertificationStatusIcon(cert.status) }}</span>
+                <h4>{{ cert.name }}</h4>
+              </div>
+              <span class="status-badge" [class]="getStatusBadgeClass(cert.status)">
+                {{ cert.status }}
+              </span>
+            </div>
+            <div class="cert-details">
+              <div class="cert-item">
+                <span class="label">Certifying Body</span>
+                <span class="value">{{ cert.certifyingBody }}</span>
+              </div>
+              <div class="cert-item">
+                <span class="label">Certificate Number</span>
+                <span class="value">{{ cert.certificateNumber }}</span>
+              </div>
+              <div class="cert-item">
+                <span class="label">Issue Date</span>
+                <span class="value">{{ formatDate(cert.issueDate) }}</span>
+              </div>
+              <div class="cert-item">
+                <span class="label">Expiry Date</span>
+                <span class="value" [class.expiring]="isDocumentExpiringSoon(cert.expiryDate)" [class.expired]="isDocumentExpired(cert.expiryDate)">
+                  {{ formatDate(cert.expiryDate) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Documents Tab -->
+      <div class="tab-panel" *ngIf="activeTab === 'documents'">
+        <div class="documents-grid">
+          <div class="document-card" *ngFor="let doc of vendorProfile.documents">
+            <div class="document-header">
+              <div class="document-info">
+                <span class="doc-icon">{{ getDocumentTypeIcon(doc.type) }}</span>
+                <div class="doc-details">
+                  <h4>{{ doc.name }}</h4>
+                  <p class="doc-filename">{{ doc.fileName }}</p>
+                </div>
+              </div>
+              <div class="document-actions">
+                <span class="status-badge" [class]="getStatusBadgeClass(doc.status)">
+                  {{ doc.status }}
+                </span>
+                <button class="download-button" (click)="downloadDocument(doc.id)" title="Download">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <polyline points="7,10 12,15 17,10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="document-meta">
+              <div class="meta-item">
+                <span class="label">Type</span>
+                <span class="value">{{ doc.type.replace('_', ' ') }}</span>
+              </div>
+              <div class="meta-item">
+                <span class="label">Upload Date</span>
+                <span class="value">{{ formatDate(doc.uploadDate) }}</span>
+              </div>
+              <div class="meta-item" *ngIf="doc.expiryDate">
+                <span class="label">Expiry Date</span>
+                <span class="value" [class.expiring]="isDocumentExpiringSoon(doc.expiryDate)" [class.expired]="isDocumentExpired(doc.expiryDate)">
+                  {{ formatDate(doc.expiryDate) }}
+                </span>
+              </div>
+              <div class="meta-item">
+                <span class="label">File Size</span>
+                <span class="value">{{ (doc.fileSize / 1024 / 1024).toFixed(2) }} MB</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Customer Profile Tab -->
+      <div class="tab-panel" *ngIf="activeTab === 'customer'">
+        <div class="customer-profile-section">
+          <h3>Purchasing Organization Profile</h3>
+          <p class="section-description">Information about the company you're doing business with</p>
+          
+          <!-- Company Overview -->
+          <div class="customer-overview-grid">
+            <div class="customer-info-card">
+              <div class="card-header">
+                <h4>Company Information</h4>
+                <div class="company-logo">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="company-details">
+                <div class="detail-item">
+                  <span class="label">Company Name:</span>
+                  <span class="value">Global Manufacturing Corp</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Company Code:</span>
+                  <span class="value">1000</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Industry:</span>
+                  <span class="value">Manufacturing & Industrial</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Established:</span>
+                  <span class="value">1985</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Country:</span>
+                  <span class="value">United States</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Currency:</span>
+                  <span class="value">USD</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Business Relationship -->
+            <div class="customer-info-card">
+              <div class="card-header">
+                <h4>Business Relationship</h4>
+                <div class="relationship-status">
+                  <span class="status-badge status-active">Active Partner</span>
+                </div>
+              </div>
+              <div class="relationship-details">
+                <div class="detail-item">
+                  <span class="label">Partnership Since:</span>
+                  <span class="value">January 2020</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Relationship Duration:</span>
+                  <span class="value">4+ Years</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Total Transactions:</span>
+                  <span class="value">$2,450,000</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Payment Terms:</span>
+                  <span class="value">NET 30</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Credit Rating:</span>
+                  <span class="value rating-excellent">Excellent (AAA)</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Risk Level:</span>
+                  <span class="value risk-low">Low Risk</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact Information -->
+          <div class="customer-contacts-section">
+            <h4>Key Contacts</h4>
+            <div class="contacts-grid">
+              <div class="contact-card">
+                <div class="contact-header">
+                  <div class="contact-avatar">
+                    <span>JP</span>
+                  </div>
+                  <div class="contact-info">
+                    <h5>John Patterson</h5>
+                    <p>Procurement Manager</p>
+                  </div>
+                </div>
+                <div class="contact-details">
+                  <div class="contact-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>john.patterson@globalmanufacturing.com</span>
+                  </div>
+                  <div class="contact-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M22 16.92V19.92C22 20.5 21.77 21.05 21.37 21.42C21 21.8 20.47 22 19.92 22H19.92C19.74 22 19.56 21.98 19.38 21.94C8.48 20.9 1.1 13.52 0.0600004 2.62C0.0200004 2.44 0 2.26 0 2.08V2.08C0 1.53 0.2 1 0.58 0.63C0.95 0.23 1.5 0 2.08 0H5.08C5.66 0 6.16 0.38 6.28 0.94C6.4 1.5 6.63 2.04 6.97 2.53L5.25 4.25C6.85 7.57 9.43 10.15 12.75 11.75L14.47 10.03C14.96 10.37 15.5 10.6 16.06 10.72C16.62 10.84 17.34 11 17.92 11C18.5 11 19 11.38 19.12 11.94L19.12 14.94C19.12 15.5 18.74 16 18.18 16C17.6 16 17.04 15.77 16.64 15.37Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>+1 (555) 123-4567</span>
+                  </div>
+                  <div class="contact-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Procurement Department</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="contact-card">
+                <div class="contact-header">
+                  <div class="contact-avatar">
+                    <span>SF</span>
+                  </div>
+                  <div class="contact-info">
+                    <h5>Sarah Foster</h5>
+                    <p>Finance Controller</p>
+                  </div>
+                </div>
+                <div class="contact-details">
+                  <div class="contact-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>sarah.foster@globalmanufacturing.com</span>
+                  </div>
+                  <div class="contact-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M22 16.92V19.92C22 20.5 21.77 21.05 21.37 21.42C21 21.8 20.47 22 19.92 22H19.92C19.74 22 19.56 21.98 19.38 21.94C8.48 20.9 1.1 13.52 0.0600004 2.62C0.0200004 2.44 0 2.26 0 2.08V2.08C0 1.53 0.2 1 0.58 0.63C0.95 0.23 1.5 0 2.08 0H5.08C5.66 0 6.16 0.38 6.28 0.94C6.4 1.5 6.63 2.04 6.97 2.53L5.25 4.25C6.85 7.57 9.43 10.15 12.75 11.75L14.47 10.03C14.96 10.37 15.5 10.6 16.06 10.72C16.62 10.84 17.34 11 17.92 11C18.5 11 19 11.38 19.12 11.94L19.12 14.94C19.12 15.5 18.74 16 18.18 16C17.6 16 17.04 15.77 16.64 15.37Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>+1 (555) 123-4589</span>
+                  </div>
+                  <div class="contact-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Accounts Payable</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="contact-card">
+                <div class="contact-header">
+                  <div class="contact-avatar">
+                    <span>MJ</span>
+                  </div>
+                  <div class="contact-info">
+                    <h5>Mike Johnson</h5>
+                    <p>Quality Assurance Manager</p>
+                  </div>
+                </div>
+                <div class="contact-details">
+                  <div class="contact-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>mike.johnson@globalmanufacturing.com</span>
+                  </div>
+                  <div class="contact-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M22 16.92V19.92C22 20.5 21.77 21.05 21.37 21.42C21 21.8 20.47 22 19.92 22H19.92C19.74 22 19.56 21.98 19.38 21.94C8.48 20.9 1.1 13.52 0.0600004 2.62C0.0200004 2.44 0 2.26 0 2.08V2.08C0 1.53 0.2 1 0.58 0.63C0.95 0.23 1.5 0 2.08 0H5.08C5.66 0 6.16 0.38 6.28 0.94C6.4 1.5 6.63 2.04 6.97 2.53L5.25 4.25C6.85 7.57 9.43 10.15 12.75 11.75L14.47 10.03C14.96 10.37 15.5 10.6 16.06 10.72C16.62 10.84 17.34 11 17.92 11C18.5 11 19 11.38 19.12 11.94L19.12 14.94C19.12 15.5 18.74 16 18.18 16C17.6 16 17.04 15.77 16.64 15.37Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>+1 (555) 123-4578</span>
+                  </div>
+                  <div class="contact-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Quality Control Department</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Business Statistics -->
+          <div class="customer-stats-section">
+            <h4>Business Performance Metrics</h4>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <line x1="12" y1="2" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M17 5H9.5C8.57174 5 7.6815 5.36875 7.02513 6.02513C6.36875 6.6815 6 7.57174 6 8.5C6 9.42826 6.36875 10.3185 7.02513 10.9749C7.6815 11.6312 8.57174 12 9.5 12H14.5C15.4283 12 16.3185 12.3687 16.9749 13.0251C17.6312 13.6815 18 14.5717 18 15.5C18 16.4283 17.6312 17.3185 16.9749 17.9749C16.3185 18.6312 15.4283 19 14.5 19H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="stat-content">
+                  <h5>Average Order Value</h5>
+                  <p class="stat-value">$65,250</p>
+                  <span class="stat-trend positive">+12% vs last year</span>
+                </div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                    <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="stat-content">
+                  <h5>Average Payment Time</h5>
+                  <p class="stat-value">28 Days</p>
+                  <span class="stat-trend positive">-3 days improvement</span>
+                </div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16 21V19C16 17.9391 15.5786 16.9217 14.8284 16.1716C14.0783 15.4214 13.0609 15 12 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="8.5" cy="7" r="4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M20 8V6C20 5.46957 19.7893 4.96086 19.4142 4.58579C19.0391 4.21071 18.5304 4 18 4H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M23 11L20 8L17 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="stat-content">
+                  <h5>Customer Satisfaction</h5>
+                  <p class="stat-value">4.8/5.0</p>
+                  <span class="stat-trend positive">Excellent Rating</span>
+                </div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="stat-content">
+                  <h5>On-Time Delivery</h5>
+                  <p class="stat-value">96.5%</p>
+                  <span class="stat-trend positive">Above target (95%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Company Address -->
+          <div class="customer-address-section">
+            <h4>Head Office Address</h4>
+            <div class="address-card">
+              <div class="address-header">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M21 10C21 17 12 23 12 23S3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.3639 3.63604C20.0518 5.32387 21 7.61305 21 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <h5>Corporate Headquarters</h5>
+              </div>
+              <div class="address-content">
+                <p>Global Manufacturing Corp</p>
+                <p>1250 Technology Drive</p>
+                <p>Industrial Park, Suite 500</p>
+                <p>Chicago, IL 60601</p>
+                <p>United States</p>
+                <div class="address-actions">
+                  <button class="btn-link">View on Map</button>
+                  <button class="btn-link">Get Directions</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
