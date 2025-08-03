@@ -10,6 +10,13 @@ const customerRoutes = require('./routes/customer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Console startup info
+console.log('🚀 Customer Portal Backend Starting...');
+console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
+console.log('📡 SAP URL:', process.env.SAP_BASE_URL || 'http://AZKTLDS5CP.kcloud.com:8000');
+console.log('🔑 SAP User:', process.env.SAP_USER || 'K901703');
+console.log('🏢 SAP Client:', process.env.SAP_CLIENT || '100');
+
 // Security middleware
 app.use(helmet());
 app.use(cors({
@@ -41,7 +48,30 @@ app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
     message: 'Customer Portal Backend is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    sap: {
+      url: process.env.SAP_BASE_URL || 'http://AZKTLDS5CP.kcloud.com:8000',
+      client: process.env.SAP_CLIENT || '100',
+      user: process.env.SAP_USER || 'K901703'
+    }
+  });
+});
+
+// SAP Connection Test Endpoint
+app.get('/api/sap-test', (req, res) => {
+  const SAPWebService = require('./services/sapWebService');
+  const sapService = new SAPWebService();
+  
+  res.json({
+    message: 'SAP Configuration Ready',
+    config: {
+      baseUrl: sapService.config.baseUrl,
+      serviceEndpoint: sapService.config.serviceEndpoint,
+      client: sapService.config.client,
+      username: sapService.config.username,
+      fullUrl: `${sapService.config.baseUrl}${sapService.config.serviceEndpoint}?sap-client=${sapService.config.client}`
+    },
+    instructions: 'Use POST /api/auth/login with customerId: "0000000003" and password: "12345" to test authentication'
   });
 });
 

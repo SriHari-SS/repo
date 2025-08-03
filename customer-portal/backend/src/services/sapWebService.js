@@ -3,20 +3,31 @@ const xml2js = require('xml2js');
 
 class SAPWebService {
   constructor() {
-    // SAP Configuration - You can set these via environment variables
+    // SAP Configuration from environment variables with fallback
     this.config = {
-      baseUrl: process.env.SAP_URL || 'http://AZKTLDS5CP.kcloud.com:8000',
-      serviceEndpoint: '/sap/bc/srt/scs/sap/zfy_portal_service',
+      baseUrl: process.env.SAP_BASE_URL || 'http://AZKTLDS5CP.kcloud.com:8000',
+      serviceEndpoint: process.env.SAP_SERVICE_PATH || '/sap/bc/srt/scs/sap/zfy_portal_service',
       client: process.env.SAP_CLIENT || '100',
+      username: process.env.SAP_USER || 'K901703',
+      password: process.env.SAP_PASSWORD || 'Bhavadharani@123',
       namespace: 'urn:sap-com:document:sap:rfc:functions',
       soapNamespace: 'http://www.w3.org/2003/05/soap-envelope'
     };
+    
+    // Create Basic Auth header
+    this.authHeader = 'Basic ' + Buffer.from(`${this.config.username}:${this.config.password}`).toString('base64');
     
     this.parser = new xml2js.Parser({ explicitArray: false });
     this.builder = new xml2js.Builder({
       rootName: 'soap:Envelope',
       xmldec: { version: '1.0', encoding: 'UTF-8' }
     });
+    
+    console.log('🔧 SAP Web Service Configuration:');
+    console.log(`   Base URL: ${this.config.baseUrl}`);
+    console.log(`   Service: ${this.config.serviceEndpoint}`);
+    console.log(`   Client: ${this.config.client}`);
+    console.log(`   Username: ${this.config.username}`);
   }
 
   /**
@@ -48,9 +59,9 @@ class SAPWebService {
       const url = `${this.config.baseUrl}${this.config.serviceEndpoint}?sap-client=${this.config.client}`;
       
       const headers = {
-        'Content-Type': 'application/soap+xml; charset=utf-8',
-        'SOAPAction': '',
-        'Accept': 'application/soap+xml, application/dime, multipart/related, text/*'
+        'Content-Type': 'text/xml;charset=UTF-8',
+        'Authorization': this.authHeader,
+        'SOAPAction': ''
       };
 
       console.log('SAP Request URL:', url);
