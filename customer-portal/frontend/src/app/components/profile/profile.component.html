@@ -1,0 +1,229 @@
+<div class="profile-container">
+  <!-- Header -->
+  <header class="profile-header">
+    <div class="header-content">
+      <div class="header-left">
+        <button class="back-btn" (click)="goBack()">
+          <span class="icon">←</span>
+          Back to Dashboard
+        </button>
+        <h1>Customer Profile</h1>
+        <p class="subtitle">View and manage your account information</p>
+      </div>
+      <div class="header-actions" *ngIf="!loading() && !error()">
+        <button 
+          *ngIf="!isEditing()" 
+          class="edit-btn" 
+          (click)="toggleEdit()"
+        >
+          <span class="icon">✏️</span>
+          Edit Profile
+        </button>
+        <div *ngIf="isEditing()" class="edit-actions">
+          <button class="save-btn" (click)="saveProfile()">
+            <span class="icon">💾</span>
+            Save Changes
+          </button>
+          <button class="cancel-btn" (click)="cancelEdit()">
+            <span class="icon">✖️</span>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Loading State -->
+  <div *ngIf="loading()" class="loading-container">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+      <p>Loading profile information...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error() && !loading()" class="error-container">
+    <div class="error-message">
+      <span class="icon">⚠️</span>
+      <p>{{ error() }}</p>
+      <button class="retry-btn" (click)="loadProfile()">Try Again</button>
+    </div>
+  </div>
+
+  <!-- Profile Content -->
+  <div *ngIf="!loading() && !error() && profile()" class="profile-content">
+    <div class="profile-layout">
+      <!-- Profile Card -->
+      <div class="profile-card">
+        <div class="profile-avatar">
+          <div class="avatar-circle">
+            {{ getInitials(profile()?.name || '') }}
+          </div>
+        </div>
+        
+        <div class="profile-summary">
+          <h2>{{ profile()?.name || 'Customer Name' }}</h2>
+          <p class="customer-id">ID: {{ profile()?.customerId }}</p>
+          <p class="company" *ngIf="profile()?.company">{{ profile()?.company }}</p>
+        </div>
+
+        <div class="profile-stats">
+          <div class="stat-item">
+            <span class="stat-label">Account Status</span>
+            <span class="stat-value active">Active</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Member Since</span>
+            <span class="stat-value">2023</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Details Section -->
+      <div class="details-section">
+        <!-- Contact Information -->
+        <div class="info-card">
+          <div class="card-header">
+            <h3>Contact Information</h3>
+            <span class="icon">📞</span>
+          </div>
+          <div class="card-content">
+            <div class="info-grid">
+              <div class="info-item">
+                <label>Email Address</label>
+                <div class="info-value">
+                  <span *ngIf="!isEditing()">{{ profile()?.email || 'Not provided' }}</span>
+                  <input 
+                    *ngIf="isEditing()" 
+                    type="email" 
+                    [value]="profile()?.email || ''" 
+                    class="edit-input"
+                    placeholder="Enter email address"
+                  />
+                </div>
+              </div>
+
+              <div class="info-item">
+                <label>Phone Number</label>
+                <div class="info-value">
+                  <span *ngIf="!isEditing()">{{ formatPhoneNumber(profile()?.phone || '') }}</span>
+                  <input 
+                    *ngIf="isEditing()" 
+                    type="tel" 
+                    [value]="profile()?.phone || ''" 
+                    class="edit-input"
+                    placeholder="Enter phone number"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Address Information -->
+        <div class="info-card">
+          <div class="card-header">
+            <h3>Address Information</h3>
+            <span class="icon">🏠</span>
+          </div>
+          <div class="card-content">
+            <div class="info-grid">
+              <div class="info-item full-width">
+                <label>Street Address</label>
+                <div class="info-value">
+                  <span *ngIf="!isEditing()">{{ profile()?.address || 'Not provided' }}</span>
+                  <input 
+                    *ngIf="isEditing()" 
+                    type="text" 
+                    [value]="profile()?.address || ''" 
+                    class="edit-input"
+                    placeholder="Enter street address"
+                  />
+                </div>
+              </div>
+
+              <div class="info-item">
+                <label>City</label>
+                <div class="info-value">
+                  <span *ngIf="!isEditing()">{{ profile()?.city || 'Not provided' }}</span>
+                  <input 
+                    *ngIf="isEditing()" 
+                    type="text" 
+                    [value]="profile()?.city || ''" 
+                    class="edit-input"
+                    placeholder="Enter city"
+                  />
+                </div>
+              </div>
+
+              <div class="info-item">
+                <label>Country</label>
+                <div class="info-value">
+                  <span *ngIf="!isEditing()">{{ profile()?.country || 'Not provided' }}</span>
+                  <input 
+                    *ngIf="isEditing()" 
+                    type="text" 
+                    [value]="profile()?.country || ''" 
+                    class="edit-input"
+                    placeholder="Enter country"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Business Information -->
+        <div class="info-card">
+          <div class="card-header">
+            <h3>Business Information</h3>
+            <span class="icon">🏢</span>
+          </div>
+          <div class="card-content">
+            <div class="info-grid">
+              <div class="info-item">
+                <label>Company Name</label>
+                <div class="info-value">
+                  <span *ngIf="!isEditing()">{{ profile()?.company || 'Not provided' }}</span>
+                  <input 
+                    *ngIf="isEditing()" 
+                    type="text" 
+                    [value]="profile()?.company || ''" 
+                    class="edit-input"
+                    placeholder="Enter company name"
+                  />
+                </div>
+              </div>
+
+              <div class="info-item">
+                <label>Customer ID</label>
+                <div class="info-value">
+                  <span class="readonly-field">{{ profile()?.customerId }}</span>
+                  <small class="field-note">This field cannot be modified</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Additional Information -->
+        <div class="info-card">
+          <div class="card-header">
+            <h3>Additional Information</h3>
+            <span class="icon">ℹ️</span>
+          </div>
+          <div class="card-content">
+            <div class="info-note">
+              <p><strong>Data Source:</strong> All information is synchronized with SAP ERP system</p>
+              <p><strong>Last Updated:</strong> {{ getCurrentDate() }}</p>
+              <p class="data-notice">
+                <span class="icon">🔒</span>
+                Your personal information is securely stored and managed according to our privacy policy.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

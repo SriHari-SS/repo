@@ -1,0 +1,523 @@
+<div class="financial-sheet-container">
+  <!-- Header Section -->
+  <div class="financial-header">
+    <div class="header-content">
+      <div class="title-section">
+        <h1>
+          <i class="fas fa-file-invoice-dollar"></i>
+          Customer Financial Sheet
+        </h1>
+        <p class="subtitle">Complete financial transaction overview</p>
+      </div>
+      
+      <div class="header-actions">
+        <button class="btn btn-outline" (click)="printFinancialSheet()">
+          <i class="fas fa-print"></i>
+          Print
+        </button>
+        <button class="btn btn-outline" (click)="exportToPDF()">
+          <i class="fas fa-file-pdf"></i>
+          Export PDF
+        </button>
+        <button class="btn btn-outline" (click)="exportToExcel()">
+          <i class="fas fa-file-excel"></i>
+          Export Excel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section">
+    <div class="filter-group">
+      <label for="period-filter">Time Period:</label>
+      <select 
+        id="period-filter" 
+        [value]="selectedPeriod()" 
+        (change)="onPeriodChange($any($event.target).value)">
+        <option value="all">All Time</option>
+        <option value="30">Last 30 Days</option>
+        <option value="60">Last 60 Days</option>
+        <option value="90">Last 90 Days</option>
+        <option value="365">Last Year</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label for="status-filter">Status:</label>
+      <select 
+        id="status-filter" 
+        [value]="selectedStatus()" 
+        (change)="onStatusChange($any($event.target).value)">
+        <option value="all">All Status</option>
+        <option value="paid">Paid</option>
+        <option value="pending">Pending</option>
+        <option value="overdue">Overdue</option>
+        <option value="partial">Partial</option>
+      </select>
+    </div>
+
+    <div class="filter-group date-range">
+      <label>Date Range:</label>
+      <div class="date-inputs">
+        <input 
+          type="date" 
+          [value]="dateFrom()" 
+          (change)="onDateRangeChange($any($event.target).value, dateTo())"
+          placeholder="From">
+        <span>to</span>
+        <input 
+          type="date" 
+          [value]="dateTo()" 
+          (change)="onDateRangeChange(dateFrom(), $any($event.target).value)"
+          placeholder="To">
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading financial data...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error()) {
+    <div class="error-state">
+      <i class="fas fa-exclamation-triangle"></i>
+      <p>{{ error() }}</p>
+      <button class="btn btn-primary" (click)="loadFinancialData()">Retry</button>
+    </div>
+  }
+
+  <!-- Main Content -->
+  @if (!loading() && !error()) {
+    <!-- Financial Summary Cards -->
+    <div class="summary-cards">
+      <div class="summary-card total-invoiced">
+        <div class="card-icon">
+          <i class="fas fa-file-invoice"></i>
+        </div>
+        <div class="card-content">
+          <h3>Total Invoiced</h3>
+          <p class="amount">{{ formatCurrency(financialSummary().totalInvoiced) }}</p>
+          <span class="subtitle">Lifetime invoiced amount</span>
+        </div>
+      </div>
+
+      <div class="summary-card total-paid">
+        <div class="card-icon">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="card-content">
+          <h3>Total Paid</h3>
+          <p class="amount">{{ formatCurrency(financialSummary().totalPaid) }}</p>
+          <span class="subtitle">Collected payments</span>
+        </div>
+      </div>
+
+      <div class="summary-card outstanding">
+        <div class="card-icon">
+          <i class="fas fa-clock"></i>
+        </div>
+        <div class="card-content">
+          <h3>Outstanding</h3>
+          <p class="amount">{{ formatCurrency(financialSummary().totalOutstanding) }}</p>
+          <span class="subtitle">Pending collection</span>
+        </div>
+      </div>
+
+      <div class="summary-card credit-memos">
+        <div class="card-icon">
+          <i class="fas fa-minus-circle"></i>
+        </div>
+        <div class="card-content">
+          <h3>Credit Memos</h3>
+          <p class="amount">{{ formatCurrency(financialSummary().totalCreditMemos) }}</p>
+          <span class="subtitle">Customer credits</span>
+        </div>
+      </div>
+
+      <div class="summary-card debit-memos">
+        <div class="card-icon">
+          <i class="fas fa-plus-circle"></i>
+        </div>
+        <div class="card-content">
+          <h3>Debit Memos</h3>
+          <p class="amount">{{ formatCurrency(financialSummary().totalDebitMemos) }}</p>
+          <span class="subtitle">Additional charges</span>
+        </div>
+      </div>
+
+      <div class="summary-card avg-payment">
+        <div class="card-icon">
+          <i class="fas fa-calendar-alt"></i>
+        </div>
+        <div class="card-content">
+          <h3>Avg Payment Days</h3>
+          <p class="amount">{{ financialSummary().averagePaymentDays }}</p>
+          <span class="subtitle">Days to collect</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tab-navigation">
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab() === 'overview'"
+        (click)="setActiveTab('overview')">
+        <i class="fas fa-chart-pie"></i>
+        Overview
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab() === 'invoices'"
+        (click)="setActiveTab('invoices')">
+        <i class="fas fa-file-invoice"></i>
+        Invoices
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab() === 'payments'"
+        (click)="setActiveTab('payments')">
+        <i class="fas fa-credit-card"></i>
+        Payments
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab() === 'aging'"
+        (click)="setActiveTab('aging')">
+        <i class="fas fa-hourglass-half"></i>
+        Aging Report
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab() === 'memos'"
+        (click)="setActiveTab('memos')">
+        <i class="fas fa-sticky-note"></i>
+        Memos
+      </button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- Overview Tab -->
+      @if (activeTab() === 'overview') {
+        <div class="overview-tab">
+          <div class="overview-grid">
+            <!-- Recent Invoices -->
+            <div class="overview-section">
+              <h3>Recent Invoices</h3>
+              <div class="recent-items">
+                @for (invoice of filteredInvoices().slice(0, 5); track trackByInvoice($index, invoice)) {
+                  <div class="item-card invoice-item">
+                    <div class="item-header">
+                      <span class="invoice-number">{{ invoice.invoiceNumber }}</span>
+                      <span class="status-badge" [ngClass]="getStatusClass(invoice.status)">
+                        {{ invoice.status | titlecase }}
+                      </span>
+                    </div>
+                    <div class="item-content">
+                      <p class="amount">{{ formatCurrency(invoice.totalAmount) }}</p>
+                      <p class="date">Due: {{ formatDate(invoice.dueDate) }}</p>
+                      @if (invoice.agingDays > 0) {
+                        <p class="aging" [ngClass]="getPriorityClass(invoice.agingDays)">
+                          {{ invoice.agingDays }} days overdue
+                        </p>
+                      }
+                    </div>
+                  </div>
+                } @empty {
+                  <p class="no-data">No recent invoices</p>
+                }
+              </div>
+            </div>
+
+            <!-- Recent Payments -->
+            <div class="overview-section">
+              <h3>Recent Payments</h3>
+              <div class="recent-items">
+                @for (payment of filteredPayments().slice(0, 5); track trackByPayment($index, payment)) {
+                  <div class="item-card payment-item">
+                    <div class="item-header">
+                      <span class="payment-id">{{ payment.paymentId }}</span>
+                      <span class="status-badge" [ngClass]="getStatusClass(payment.status)">
+                        {{ payment.status | titlecase }}
+                      </span>
+                    </div>
+                    <div class="item-content">
+                      <p class="amount">{{ formatCurrency(payment.amount) }}</p>
+                      <p class="date">{{ formatDate(payment.paymentDate) }}</p>
+                      <p class="method">{{ payment.paymentMethod | titlecase }}</p>
+                    </div>
+                  </div>
+                } @empty {
+                  <p class="no-data">No recent payments</p>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Invoices Tab -->
+      @if (activeTab() === 'invoices') {
+        <div class="invoices-tab">
+          <div class="table-header">
+            <h3>Invoice Details</h3>
+            <p class="results-count">{{ filteredInvoices().length }} invoices found</p>
+          </div>
+
+          <div class="table-container">
+            <table class="financial-table">
+              <thead>
+                <tr>
+                  <th>Invoice Number</th>
+                  <th>Invoice Date</th>
+                  <th>Due Date</th>
+                  <th>PO Number</th>
+                  <th>Amount</th>
+                  <th>Tax</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Aging</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (invoice of filteredInvoices(); track trackByInvoice($index, invoice)) {
+                  <tr>
+                    <td>
+                      <strong>{{ invoice.invoiceNumber }}</strong>
+                    </td>
+                    <td>{{ formatDate(invoice.invoiceDate) }}</td>
+                    <td>{{ formatDate(invoice.dueDate) }}</td>
+                    <td>{{ invoice.purchaseOrderNumber }}</td>
+                    <td>{{ formatCurrency(invoice.amount) }}</td>
+                    <td>{{ formatCurrency(invoice.taxAmount) }}</td>
+                    <td><strong>{{ formatCurrency(invoice.totalAmount) }}</strong></td>
+                    <td>
+                      <span class="status-badge" [ngClass]="getStatusClass(invoice.status)">
+                        {{ invoice.status | titlecase }}
+                      </span>
+                    </td>
+                    <td>
+                      @if (invoice.agingDays > 0) {
+                        <span class="aging-badge" [ngClass]="getPriorityClass(invoice.agingDays)">
+                          {{ invoice.agingDays }} days
+                        </span>
+                      } @else {
+                        <span class="aging-badge priority-current">Current</span>
+                      }
+                    </td>
+                    <td>
+                      <div class="action-buttons">
+                        <button class="btn-sm btn-primary" title="View Details">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn-sm btn-secondary" title="Download PDF">
+                          <i class="fas fa-download"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="10" class="no-data-row">
+                      <div class="no-data-message">
+                        <i class="fas fa-file-invoice"></i>
+                        <p>No invoices found for the selected criteria</p>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- Payments Tab -->
+      @if (activeTab() === 'payments') {
+        <div class="payments-tab">
+          <div class="table-header">
+            <h3>Payment History</h3>
+            <p class="results-count">{{ filteredPayments().length }} payments found</p>
+          </div>
+
+          <div class="table-container">
+            <table class="financial-table">
+              <thead>
+                <tr>
+                  <th>Payment ID</th>
+                  <th>Invoice Number</th>
+                  <th>Payment Date</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th>Reference</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (payment of filteredPayments(); track trackByPayment($index, payment)) {
+                  <tr>
+                    <td><strong>{{ payment.paymentId }}</strong></td>
+                    <td>{{ payment.invoiceNumber }}</td>
+                    <td>{{ formatDate(payment.paymentDate) }}</td>
+                    <td><strong>{{ formatCurrency(payment.amount) }}</strong></td>
+                    <td>
+                      <span class="payment-method">
+                        <i class="fas" [ngClass]="{
+                          'fa-university': payment.paymentMethod === 'bank_transfer',
+                          'fa-check': payment.paymentMethod === 'check',
+                          'fa-money-bill': payment.paymentMethod === 'cash',
+                          'fa-credit-card': payment.paymentMethod === 'credit_card'
+                        }"></i>
+                        {{ payment.paymentMethod | titlecase }}
+                      </span>
+                    </td>
+                    <td class="reference">{{ payment.reference }}</td>
+                    <td>
+                      <span class="status-badge" [ngClass]="getStatusClass(payment.status)">
+                        {{ payment.status | titlecase }}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="action-buttons">
+                        <button class="btn-sm btn-primary" title="View Receipt">
+                          <i class="fas fa-receipt"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="8" class="no-data-row">
+                      <div class="no-data-message">
+                        <i class="fas fa-credit-card"></i>
+                        <p>No payments found for the selected criteria</p>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- Aging Report Tab -->
+      @if (activeTab() === 'aging') {
+        <div class="aging-tab">
+          <div class="aging-header">
+            <h3>Payment Aging Report</h3>
+            <p class="subtitle">Outstanding balances by aging period</p>
+          </div>
+
+          <div class="aging-chart">
+            @for (bucket of agingReport(); track trackByAging($index, bucket)) {
+              <div class="aging-bucket">
+                <div class="bucket-header">
+                  <h4>{{ bucket.period }}</h4>
+                  <span class="days-range">{{ bucket.daysRange }}</span>
+                </div>
+                <div class="bucket-stats">
+                  <p class="amount">{{ formatCurrency(bucket.amount) }}</p>
+                  <p class="count">{{ bucket.count }} invoices</p>
+                  <p class="percentage">{{ bucket.percentage }}% of total</p>
+                </div>
+                <div class="bucket-bar">
+                  <div class="bar-fill" [style.width.%]="bucket.percentage"></div>
+                </div>
+              </div>
+            } @empty {
+              <div class="no-aging-data">
+                <i class="fas fa-chart-bar"></i>
+                <p>No aging data available</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Credit/Debit Memos Tab -->
+      @if (activeTab() === 'memos') {
+        <div class="memos-tab">
+          <div class="table-header">
+            <h3>Credit & Debit Memos</h3>
+            <p class="results-count">{{ filteredMemos().length }} memos found</p>
+          </div>
+
+          <div class="table-container">
+            <table class="financial-table">
+              <thead>
+                <tr>
+                  <th>Memo Number</th>
+                  <th>Type</th>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Reason</th>
+                  <th>Invoice Reference</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (memo of filteredMemos(); track trackByMemo($index, memo)) {
+                  <tr>
+                    <td><strong>{{ memo.memoNumber }}</strong></td>
+                    <td>
+                      <span class="memo-type" [ngClass]="memo.type === 'credit' ? 'credit-memo' : 'debit-memo'">
+                        <i class="fas" [ngClass]="{
+                          'fa-minus-circle': memo.type === 'credit',
+                          'fa-plus-circle': memo.type === 'debit'
+                        }"></i>
+                        {{ memo.type | titlecase }} Memo
+                      </span>
+                    </td>
+                    <td>{{ formatDate(memo.date) }}</td>
+                    <td>
+                      <strong [ngClass]="memo.type === 'credit' ? 'credit-amount' : 'debit-amount'">
+                        {{ memo.type === 'credit' ? '-' : '+' }}{{ formatCurrency(memo.amount) }}
+                      </strong>
+                    </td>
+                    <td class="reason">{{ memo.reason }}</td>
+                    <td>{{ memo.invoiceReference || 'N/A' }}</td>
+                    <td>
+                      <span class="status-badge" [ngClass]="getStatusClass(memo.status)">
+                        {{ memo.status | titlecase }}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="action-buttons">
+                        <button class="btn-sm btn-primary" title="View Details">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn-sm btn-secondary" title="Download PDF">
+                          <i class="fas fa-download"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="8" class="no-data-row">
+                      <div class="no-data-message">
+                        <i class="fas fa-sticky-note"></i>
+                        <p>No credit/debit memos found for the selected criteria</p>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

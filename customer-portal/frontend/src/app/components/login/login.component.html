@@ -1,0 +1,60 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-header">
+      <h1>Customer Portal</h1>
+      <p>Sign in to access your account</p>
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+      <div class="form-group">
+        <label for="customerId">Customer ID</label>
+        <input
+          type="text"
+          id="customerId"
+          formControlName="customerId"
+          placeholder="Enter your Customer ID"
+          [class.error]="loginForm.get('customerId')?.invalid && loginForm.get('customerId')?.touched"
+        />
+        <div class="error-message" *ngIf="getFieldError('customerId')">
+          {{ getFieldError('customerId') }}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          formControlName="password"
+          placeholder="Enter your password"
+          [class.error]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+        />
+        <div class="error-message" *ngIf="getFieldError('password')">
+          {{ getFieldError('password') }}
+        </div>
+      </div>
+
+      <div class="error-message global-error" *ngIf="errorMessage()">
+        {{ errorMessage() }}
+      </div>
+
+      <button 
+        type="submit" 
+        class="login-button"
+        [disabled]="loading() || loginForm.invalid"
+      >
+        <span *ngIf="!loading()">Sign In</span>
+        <span *ngIf="loading()" class="loading-spinner">
+          <span class="spinner"></span>
+          Signing in...
+        </span>
+      </button>
+    </form>
+
+    <div class="login-footer">
+      <p class="help-text">
+        Please contact your system administrator if you need assistance with your Customer ID or password.
+      </p>
+    </div>
+  </div>
+</div>
