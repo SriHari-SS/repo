@@ -1,0 +1,389 @@
+<div class="payslip-container">
+  <!-- Loading Overlay -->
+  <div *ngIf="loading" class="loading-overlay">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+      <p>Loading pay slip...</p>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="error" class="error-message">
+    <i class="error-icon">⚠️</i>
+    <span>{{ error }}</span>
+    <button class="retry-btn" (click)="initializeComponent()">Retry</button>
+  </div>
+
+  <!-- Navigation Header -->
+  <header class="payslip-header" *ngIf="!loading && !error">
+    <div class="header-content">
+      <div class="header-left">
+        <button class="back-btn" (click)="navigateToDashboard()">
+          <i class="icon">←</i>
+          <span>Back to Dashboard</span>
+        </button>
+        <h1>Pay Slip Management</h1>
+      </div>
+      <div class="header-actions" *ngIf="currentView === 'viewer' && paySlipData">
+        <button class="action-btn secondary" (click)="openHistoryModal()">
+          <i class="icon">📋</i>
+          <span>History</span>
+        </button>
+        <button class="action-btn secondary" (click)="goBackToSelection()">
+          <i class="icon">📅</i>
+          <span>Select Period</span>
+        </button>
+        <button class="action-btn primary" (click)="downloadPDF()">
+          <i class="icon">📄</i>
+          <span>Download PDF</span>
+        </button>
+        <button class="action-btn secondary" (click)="printPaySlip()">
+          <i class="icon">🖨️</i>
+          <span>Print</span>
+        </button>
+        <button class="action-btn secondary" (click)="openEmailModal()">
+          <i class="icon">📧</i>
+          <span>Email</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Period Selection View -->
+  <div *ngIf="currentView === 'selection'" class="period-selection">
+    <div class="selection-content">
+      <div class="selection-header">
+        <h2>Select Pay Period</h2>
+        <p>Choose the month and year for which you want to view the pay slip</p>
+      </div>
+
+      <div class="periods-grid">
+        <div 
+          *ngFor="let period of availablePeriods" 
+          class="period-card"
+          (click)="selectPayPeriod(period.month, period.year)"
+        >
+          <div class="period-info">
+            <h3>{{ getMonthName(period.month) }} {{ period.year }}</h3>
+            <p>{{ period.period }}</p>
+          </div>
+          <div class="period-arrow">→</div>
+        </div>
+      </div>
+
+      <div *ngIf="availablePeriods.length === 0" class="no-periods">
+        <i class="icon">📄</i>
+        <h3>No Pay Slips Available</h3>
+        <p>There are no pay slips available for your account at this time.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pay Slip Viewer -->
+  <div *ngIf="currentView === 'viewer' && paySlipData" class="payslip-viewer">
+    <div class="payslip-document" id="payslip-content">
+      
+      <!-- Company Header -->
+      <div class="company-header">
+        <div class="company-logo">
+          <img [src]="paySlipData.companyInfo.logo" [alt]="paySlipData.companyInfo.name" />
+        </div>
+        <div class="company-details">
+          <h1>{{ paySlipData.companyInfo.name }}</h1>
+          <p>{{ paySlipData.companyInfo.address }}</p>
+        </div>
+        <div class="payslip-title">
+          <h2>PAY SLIP</h2>
+          <p>{{ paySlipData.basicInfo.payPeriod }}</p>
+        </div>
+      </div>
+
+      <!-- Employee Information -->
+      <div class="employee-section">
+        <div class="section-header">
+          <h3>Employee Information</h3>
+        </div>
+        <div class="employee-details">
+          <div class="detail-group">
+            <div class="detail-item">
+              <label>Employee ID:</label>
+              <span>{{ paySlipData.basicInfo.employeeId }}</span>
+            </div>
+            <div class="detail-item">
+              <label>Employee Name:</label>
+              <span>{{ paySlipData.basicInfo.employeeName }}</span>
+            </div>
+            <div class="detail-item">
+              <label>Designation:</label>
+              <span>{{ paySlipData.basicInfo.designation }}</span>
+            </div>
+            <div class="detail-item">
+              <label>Department:</label>
+              <span>{{ paySlipData.basicInfo.department }}</span>
+            </div>
+          </div>
+          <div class="detail-group">
+            <div class="detail-item">
+              <label>Location:</label>
+              <span>{{ paySlipData.basicInfo.location }}</span>
+            </div>
+            <div class="detail-item">
+              <label>PAN Number:</label>
+              <span>{{ paySlipData.basicInfo.panNumber }}</span>
+            </div>
+            <div class="detail-item">
+              <label>PF Number:</label>
+              <span>{{ paySlipData.basicInfo.pfNumber }}</span>
+            </div>
+            <div class="detail-item">
+              <label>Pay Date:</label>
+              <span>{{ paySlipData.basicInfo.payDate | date:'dd/MM/yyyy' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance Summary -->
+      <div class="attendance-section">
+        <div class="section-header">
+          <h3>Attendance Summary</h3>
+        </div>
+        <div class="attendance-details">
+          <div class="attendance-item">
+            <label>Working Days:</label>
+            <span>{{ paySlipData.basicInfo.workingDays }}</span>
+          </div>
+          <div class="attendance-item">
+            <label>Leave Days:</label>
+            <span>{{ paySlipData.basicInfo.leaveDays }}</span>
+          </div>
+          <div class="attendance-item">
+            <label>Paid Days:</label>
+            <span>{{ paySlipData.basicInfo.paidDays }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Earnings and Deductions Table -->
+      <div class="salary-breakdown">
+        <table class="salary-table">
+          <thead>
+            <tr>
+              <th class="description-col">Earnings</th>
+              <th class="amount-col">Amount (₹)</th>
+              <th class="description-col">Deductions</th>
+              <th class="amount-col">Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let earning of paySlipData.earnings; let i = index">
+              <td class="component-name">
+                {{ earning.description }}
+                <span class="component-type" [class]="'type-' + earning.type.toLowerCase()">
+                  {{ earning.type }}
+                </span>
+              </td>
+              <td class="amount">{{ formatCurrency(earning.amount) }}</td>
+              <td class="component-name" *ngIf="paySlipData.deductions[i]">
+                {{ paySlipData.deductions[i].description }}
+                <span class="component-type" [class]="'type-' + paySlipData.deductions[i].type.toLowerCase()">
+                  {{ paySlipData.deductions[i].type }}
+                </span>
+              </td>
+              <td class="amount" *ngIf="paySlipData.deductions[i]">
+                {{ formatCurrency(paySlipData.deductions[i].amount) }}
+              </td>
+              <td *ngIf="!paySlipData.deductions[i]" colspan="2"></td>
+            </tr>
+            <!-- Additional deduction rows if more deductions than earnings -->
+            <tr *ngFor="let deduction of paySlipData.deductions.slice(paySlipData.earnings.length)">
+              <td colspan="2"></td>
+              <td class="component-name">
+                {{ deduction.description }}
+                <span class="component-type" [class]="'type-' + deduction.type.toLowerCase()">
+                  {{ deduction.type }}
+                </span>
+              </td>
+              <td class="amount">{{ formatCurrency(deduction.amount) }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td class="total-label">Total Earnings</td>
+              <td class="total-amount">{{ formatCurrency(paySlipData.totalEarnings) }}</td>
+              <td class="total-label">Total Deductions</td>
+              <td class="total-amount">{{ formatCurrency(paySlipData.totalDeductions) }}</td>
+            </tr>
+            <tr class="net-pay-row">
+              <td colspan="2" class="net-label">Net Pay</td>
+              <td colspan="2" class="net-amount">{{ formatCurrency(paySlipData.netPay) }}</td>
+            </tr>
+            <tr class="amount-words-row">
+              <td colspan="4" class="amount-words">
+                <strong>Amount in Words:</strong> {{ paySlipData.netPayInWords }}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Year to Date Summary -->
+      <div class="ytd-section">
+        <div class="section-header">
+          <h3>Year to Date Summary</h3>
+        </div>
+        <div class="ytd-grid">
+          <div class="ytd-item">
+            <label>Gross Earnings:</label>
+            <span>{{ formatCurrency(paySlipData.ytdSummary.grossEarnings) }}</span>
+          </div>
+          <div class="ytd-item">
+            <label>Total Deductions:</label>
+            <span>{{ formatCurrency(paySlipData.ytdSummary.totalDeductions) }}</span>
+          </div>
+          <div class="ytd-item">
+            <label>Net Pay:</label>
+            <span>{{ formatCurrency(paySlipData.ytdSummary.netPay) }}</span>
+          </div>
+          <div class="ytd-item">
+            <label>Income Tax:</label>
+            <span>{{ formatCurrency(paySlipData.ytdSummary.incomeTax) }}</span>
+          </div>
+          <div class="ytd-item">
+            <label>PF Contribution:</label>
+            <span>{{ formatCurrency(paySlipData.ytdSummary.pfContribution) }}</span>
+          </div>
+          <div class="ytd-item">
+            <label>ESI Contribution:</label>
+            <span>{{ formatCurrency(paySlipData.ytdSummary.esiContribution) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statutory Details -->
+      <div class="statutory-section">
+        <div class="section-header">
+          <h3>Statutory Information</h3>
+        </div>
+        <div class="statutory-grid">
+          <div class="statutory-group">
+            <h4>Provident Fund</h4>
+            <div class="statutory-item">
+              <label>Employee Contribution:</label>
+              <span>{{ formatCurrency(paySlipData.statutoryDetails.pfEmployeeContribution) }}</span>
+            </div>
+            <div class="statutory-item">
+              <label>Employer Contribution:</label>
+              <span>{{ formatCurrency(paySlipData.statutoryDetails.pfEmployerContribution) }}</span>
+            </div>
+          </div>
+          <div class="statutory-group">
+            <h4>Employee State Insurance</h4>
+            <div class="statutory-item">
+              <label>Employee Contribution:</label>
+              <span>{{ formatCurrency(paySlipData.statutoryDetails.esiEmployeeContribution) }}</span>
+            </div>
+            <div class="statutory-item">
+              <label>Employer Contribution:</label>
+              <span>{{ formatCurrency(paySlipData.statutoryDetails.esiEmployerContribution) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="payslip-footer">
+        <div class="footer-note">
+          <p><strong>Note:</strong> This is a computer-generated pay slip and does not require a signature.</p>
+          <p>Generated on: {{ paySlipData.generatedOn | date:'dd/MM/yyyy HH:mm' }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pay Slip History Modal -->
+  <div *ngIf="showHistoryModal" class="modal-overlay" (click)="closeHistoryModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Pay Slip History</h3>
+        <button class="close-btn" (click)="closeHistoryModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="history-list">
+          <div 
+            *ngFor="let history of paySlipHistory" 
+            class="history-item"
+            (click)="loadHistoryPaySlip(history)"
+          >
+            <div class="history-info">
+              <h4>{{ getMonthName(history.month) }} {{ history.year }}</h4>
+              <p>{{ history.payPeriod }}</p>
+            </div>
+            <div class="history-details">
+              <span class="net-pay">{{ formatCurrency(history.netPay) }}</span>
+              <span class="status" [class]="getStatusClass(history.status)">{{ history.status }}</span>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="paySlipHistory.length === 0" class="no-history">
+          <p>No pay slip history available</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Modal -->
+  <div *ngIf="showEmailModal" class="modal-overlay" (click)="closeEmailModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Email Pay Slip</h3>
+        <button class="close-btn" (click)="closeEmailModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="emailForm" (ngSubmit)="sendEmail()">
+          <div class="form-group">
+            <label for="emailAddress">Email Address:</label>
+            <input 
+              type="email" 
+              id="emailAddress" 
+              formControlName="emailAddress"
+              class="form-control"
+              placeholder="Enter email address"
+              required
+            />
+            <div *ngIf="emailForm.get('emailAddress')?.invalid && emailForm.get('emailAddress')?.touched" class="error-text">
+              Please enter a valid email address
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="subject">Subject:</label>
+            <input 
+              type="text" 
+              id="subject" 
+              formControlName="subject"
+              class="form-control"
+              placeholder="Email subject"
+            />
+          </div>
+          <div class="form-group">
+            <label for="message">Message:</label>
+            <textarea 
+              id="message" 
+              formControlName="message"
+              class="form-control"
+              rows="4"
+              placeholder="Email message"
+            ></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn secondary" (click)="closeEmailModal()">Cancel</button>
+            <button type="submit" class="btn primary" [disabled]="emailForm.invalid || loading">
+              <span *ngIf="loading">Sending...</span>
+              <span *ngIf="!loading">Send Email</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

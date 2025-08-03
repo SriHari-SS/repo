@@ -1,0 +1,473 @@
+<!-- Leave Management Container -->
+<div class="leave-container">
+  <!-- Header -->
+  <header class="leave-header">
+    <div class="header-content">
+      <div class="nav-section">
+        <button class="back-btn" (click)="goBack()">
+          <span class="back-icon">←</span>
+          <span>Back to Dashboard</span>
+        </button>
+        <h1>Leave Management</h1>
+      </div>
+      
+      <div class="header-actions">
+        <button class="action-btn secondary" (click)="refreshData()" [disabled]="loading">
+          <span class="icon">🔄</span>
+          <span>Refresh</span>
+        </button>
+        <button class="action-btn primary" (click)="exportReport()" [disabled]="loading">
+          <span class="icon">📊</span>
+          <span>Export Report</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="loading-card">
+      <div class="loading-spinner">
+        <div class="spinner">⏳</div>
+      </div>
+      <p>Loading leave data...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error" class="error-container">
+    <div class="error-card">
+      <div class="error-icon">⚠️</div>
+      <h3>Error Loading Data</h3>
+      <p>{{ error }}</p>
+      <button class="retry-btn" (click)="refreshData()">
+        <span class="icon">🔄</span>
+        <span>Try Again</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div *ngIf="!loading && !error" class="leave-main">
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'dashboard'"
+        (click)="switchTab('dashboard')">
+        <span class="tab-icon">📊</span>
+        <span>Dashboard</span>
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'history'"
+        (click)="switchTab('history')">
+        <span class="tab-icon">📋</span>
+        <span>History</span>
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'requests'"
+        (click)="switchTab('requests')">
+        <span class="tab-icon">📝</span>
+        <span>Requests</span>
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'calendar'"
+        (click)="switchTab('calendar')">
+        <span class="tab-icon">📅</span>
+        <span>Calendar</span>
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'reports'"
+        (click)="switchTab('reports')">
+        <span class="tab-icon">📈</span>
+        <span>Reports</span>
+      </button>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div *ngIf="activeTab === 'dashboard'" class="tab-content">
+      <!-- Leave Summary Cards -->
+      <div class="summary-section">
+        <h2>Leave Summary - {{ currentYear }}</h2>
+        <div class="summary-grid">
+          <div class="summary-card total-leaves">
+            <div class="card-header">
+              <span class="card-icon">🏖️</span>
+              <h3>Total Leaves</h3>
+            </div>
+            <div class="card-value">{{ leaveSummary?.totalLeaveDays || 0 }}</div>
+            <div class="card-subtitle">Days taken this year</div>
+          </div>
+          
+          <div class="summary-card avg-duration">
+            <div class="card-header">
+              <span class="card-icon">⏱️</span>
+              <h3>Average Duration</h3>
+            </div>
+            <div class="card-value">{{ leaveSummary?.averageLeaveDuration || 0 }}</div>
+            <div class="card-subtitle">Days per leave</div>
+          </div>
+          
+          <div class="summary-card most-used">
+            <div class="card-header">
+              <span class="card-icon">🎯</span>
+              <h3>Most Used</h3>
+            </div>
+            <div class="card-value">{{ leaveSummary?.mostUsedLeaveType || 'N/A' }}</div>
+            <div class="card-subtitle">Leave type</div>
+          </div>
+          
+          <div class="summary-card longest-streak">
+            <div class="card-header">
+              <span class="card-icon">📏</span>
+              <h3>Longest Break</h3>
+            </div>
+            <div class="card-value">{{ leaveSummary?.longestLeaveStreak || 0 }}</div>
+            <div class="card-subtitle">Consecutive days</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leave Balance Cards -->
+      <div class="balance-section">
+        <h2>Leave Balance</h2>
+        <div class="balance-grid">
+          <div *ngFor="let balance of leaveBalance" class="balance-card" [class]="getBalanceStatusClass(balance)">
+            <div class="balance-header">
+              <h3>{{ balance.leaveTypeName }}</h3>
+              <div class="balance-percentage">{{ calculateLeavePercentage(balance) }}%</div>
+            </div>
+            
+            <div class="balance-progress">
+              <div class="progress-bar">
+                <div 
+                  class="progress-fill" 
+                  [style.width.%]="calculateLeavePercentage(balance)"
+                  [style.background-color]="getLeaveTypeColor(balance.leaveType)">
+                </div>
+              </div>
+            </div>
+            
+            <div class="balance-details">
+              <div class="detail-row">
+                <span class="label">Entitled:</span>
+                <span class="value">{{ balance.entitled }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Used:</span>
+                <span class="value">{{ balance.used }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Remaining:</span>
+                <span class="value">{{ balance.remaining }}</span>
+              </div>
+              <div class="detail-row" *ngIf="balance.carriedForward > 0">
+                <span class="label">Carried Forward:</span>
+                <span class="value">{{ balance.carriedForward }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div *ngIf="activeTab === 'history'" class="tab-content">
+      <!-- Filters Section -->
+      <div class="filters-section">
+        <div class="filters-header">
+          <h2>Leave History</h2>
+          <button class="filter-toggle-btn" (click)="toggleFilters()">
+            <span class="icon">🔍</span>
+            <span>{{ showFilters ? 'Hide' : 'Show' }} Filters</span>
+          </button>
+        </div>
+        
+        <div class="filters-panel" [class.active]="showFilters">
+          <form [formGroup]="filterForm" (ngSubmit)="applyFilters()">
+            <div class="filter-grid">
+              <div class="filter-group">
+                <label>Leave Type</label>
+                <select formControlName="leaveType">
+                  <option value="">All Types</option>
+                  <option *ngFor="let type of leaveTypes" [value]="type.code">{{ type.name }}</option>
+                </select>
+              </div>
+              
+              <div class="filter-group">
+                <label>Status</label>
+                <select formControlName="status">
+                  <option value="">All Status</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+              
+              <div class="filter-group">
+                <label>From Date</label>
+                <input type="date" formControlName="fromDate">
+              </div>
+              
+              <div class="filter-group">
+                <label>To Date</label>
+                <input type="date" formControlName="toDate">
+              </div>
+              
+              <div class="filter-group">
+                <label>Year</label>
+                <select formControlName="year">
+                  <option value="">All Years</option>
+                  <option value="2024">2024</option>
+                  <option value="2025">2025</option>
+                  <option value="2026">2026</option>
+                </select>
+              </div>
+              
+              <div class="filter-group">
+                <label>Month</label>
+                <select formControlName="month">
+                  <option value="">All Months</option>
+                  <option value="1">January</option>
+                  <option value="2">February</option>
+                  <option value="3">March</option>
+                  <option value="4">April</option>
+                  <option value="5">May</option>
+                  <option value="6">June</option>
+                  <option value="7">July</option>
+                  <option value="8">August</option>
+                  <option value="9">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="filter-actions">
+              <button type="submit" class="btn-primary">Apply Filters</button>
+              <button type="button" class="btn-secondary" (click)="clearFilters()">Clear</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- History Table -->
+      <div class="table-section">
+        <div class="table-header">
+          <div class="table-info">
+            <span>Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, totalItems) }} of {{ totalItems }} records</span>
+          </div>
+          <div class="export-options">
+            <select [(ngModel)]="exportFormat" class="export-select">
+              <option value="excel">Excel</option>
+              <option value="pdf">PDF</option>
+              <option value="csv">CSV</option>
+            </select>
+            <button class="export-btn" (click)="exportReport()">
+              <span class="icon">📥</span>
+              Export
+            </button>
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="sortable" (click)="sortBy('appliedDate')">
+                  Applied Date {{ getSortIcon('appliedDate') }}
+                </th>
+                <th class="sortable" (click)="sortBy('leaveType')">
+                  Leave Type {{ getSortIcon('leaveType') }}
+                </th>
+                <th class="sortable" (click)="sortBy('fromDate')">
+                  From Date {{ getSortIcon('fromDate') }}
+                </th>
+                <th class="sortable" (click)="sortBy('toDate')">
+                  To Date {{ getSortIcon('toDate') }}
+                </th>
+                <th class="sortable" (click)="sortBy('numberOfDays')">
+                  Days {{ getSortIcon('numberOfDays') }}
+                </th>
+                <th class="sortable" (click)="sortBy('status')">
+                  Status {{ getSortIcon('status') }}
+                </th>
+                <th>Reason</th>
+                <th>Approver</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let history of leaveHistory">
+                <td>{{ formatDate(history.appliedDate) }}</td>
+                <td>
+                  <span class="leave-type-badge" [style.background-color]="getLeaveTypeColor(history.leaveType)">
+                    {{ history.leaveTypeName }}
+                  </span>
+                </td>
+                <td>{{ formatDate(history.fromDate) }}</td>
+                <td>{{ formatDate(history.toDate) }}</td>
+                <td class="text-center">{{ history.numberOfDays }}</td>
+                <td>
+                  <span class="status-badge" [class]="getStatusBadgeClass(history.status)">
+                    {{ history.status }}
+                  </span>
+                </td>
+                <td class="reason-cell" [title]="history.reason">{{ history.reason }}</td>
+                <td>{{ history.approver }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="pagination" *ngIf="getTotalPages() > 1">
+          <button 
+            class="page-btn" 
+            [disabled]="currentPage === 1"
+            (click)="goToPage(currentPage - 1)">
+            Previous
+          </button>
+          
+          <button 
+            *ngFor="let page of getPageNumbers()"
+            class="page-btn"
+            [class.active]="page === currentPage"
+            (click)="goToPage(page)">
+            {{ page }}
+          </button>
+          
+          <button 
+            class="page-btn" 
+            [disabled]="currentPage === getTotalPages()"
+            (click)="goToPage(currentPage + 1)">
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Requests Tab -->
+    <div *ngIf="activeTab === 'requests'" class="tab-content">
+      <div class="requests-section">
+        <h2>Leave Requests</h2>
+        
+        <div class="requests-grid">
+          <div *ngFor="let request of leaveRequests" class="request-card">
+            <div class="request-header">
+              <div class="request-type">
+                <span class="type-icon" [style.background-color]="getLeaveTypeColor(request.leaveType)">
+                  🏖️
+                </span>
+                <span class="type-name">{{ request.leaveTypeName }}</span>
+              </div>
+              <span class="status-badge" [class]="getStatusBadgeClass(request.status)">
+                {{ request.status }}
+              </span>
+            </div>
+            
+            <div class="request-dates">
+              <div class="date-range">
+                <span class="from-date">{{ formatDate(request.fromDate) }}</span>
+                <span class="separator">to</span>
+                <span class="to-date">{{ formatDate(request.toDate) }}</span>
+              </div>
+              <div class="duration">{{ request.numberOfDays }} day(s)</div>
+            </div>
+            
+            <div class="request-details">
+              <div class="detail-item">
+                <span class="label">Reason:</span>
+                <span class="value">{{ request.reason }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Applied:</span>
+                <span class="value">{{ formatDate(request.appliedDate) }}</span>
+              </div>
+              <div class="detail-item" *ngIf="request.approverName">
+                <span class="label">Approver:</span>
+                <span class="value">{{ request.approverName }}</span>
+              </div>
+            </div>
+            
+            <div class="request-actions" *ngIf="request.status === 'Pending'">
+              <button class="action-btn cancel" (click)="cancelLeaveRequest(request.requestId, 'User cancelled')">
+                Cancel Request
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calendar Tab -->
+    <div *ngIf="activeTab === 'calendar'" class="tab-content">
+      <div class="calendar-section">
+        <div class="calendar-header">
+          <h2>Leave Calendar</h2>
+          <div class="calendar-navigation">
+            <button class="nav-btn" (click)="previousMonth()">‹</button>
+            <span class="current-month">{{ getMonthName(selectedMonth) }} {{ selectedYear }}</span>
+            <button class="nav-btn" (click)="nextMonth()">›</button>
+          </div>
+        </div>
+        
+        <div class="calendar-grid">
+          <!-- Calendar implementation would go here -->
+          <div class="calendar-placeholder">
+            <p>Calendar view showing leave days for {{ getMonthName(selectedMonth) }} {{ selectedYear }}</p>
+            <p>Total calendar data points: {{ calendarData.length }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reports Tab -->
+    <div *ngIf="activeTab === 'reports'" class="tab-content">
+      <div class="reports-section">
+        <h2>Leave Reports & Analytics</h2>
+        
+        <!-- Report Summary -->
+        <div class="report-summary" *ngIf="leaveReport">
+          <div class="summary-cards">
+            <div class="summary-card">
+              <h3>Total Records</h3>
+              <div class="value">{{ leaveReport.summary.totalRecords }}</div>
+            </div>
+            <div class="summary-card">
+              <h3>Total Leave Days</h3>
+              <div class="value">{{ leaveReport.summary.totalLeaveDays }}</div>
+            </div>
+            <div class="summary-card">
+              <h3>Most Used Type</h3>
+              <div class="value">{{ Object.keys(leaveReport.summary.leaveTypeBreakdown)[0] || 'N/A' }}</div>
+            </div>
+          </div>
+          
+          <!-- Status Breakdown Chart -->
+          <div class="chart-section">
+            <h3>Status Breakdown</h3>
+            <div class="chart-placeholder">
+              <div *ngFor="let status of Object.keys(leaveReport.summary.statusBreakdown)" class="chart-bar">
+                <span class="bar-label">{{ status }}</span>
+                <div class="bar-container">
+                  <div 
+                    class="bar-fill" 
+                    [style.width.%]="(leaveReport.summary.statusBreakdown[status] / leaveReport.summary.totalRecords) * 100"
+                    [class]="getStatusBadgeClass(status)">
+                  </div>
+                  <span class="bar-value">{{ leaveReport.summary.statusBreakdown[status] }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,81 @@
+<div class="login-container">
+  <div class="login-card">
+    <!-- Header -->
+    <div class="login-header">
+      <div class="logo">
+        <h1>Employee Portal</h1>
+        <p>SAP Integrated HR & Finance System</p>
+      </div>
+    </div>
+
+    <!-- Login Form -->
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+      <h2>Employee Login</h2>
+      
+      <!-- Error Message -->
+      <div class="error-message" *ngIf="errorMessage">
+        <i class="error-icon">⚠️</i>
+        {{ errorMessage }}
+      </div>
+
+      <!-- Employee ID Field -->
+      <div class="form-group">
+        <label for="employeeId">Employee ID</label>
+        <input
+          type="text"
+          id="employeeId"
+          formControlName="employeeId"
+          placeholder="Enter your Employee ID (e.g., EMP001)"
+          [class.error]="hasFieldError('employeeId')"
+          autocomplete="username"
+        />
+        <div class="field-error" *ngIf="hasFieldError('employeeId')">
+          {{ getEmployeeIdErrorMessage() }}
+        </div>
+      </div>
+
+      <!-- Password Field -->
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="password-input-container">
+          <input
+            [type]="showPassword ? 'text' : 'password'"
+            id="password"
+            formControlName="password"
+            placeholder="Enter your password"
+            [class.error]="hasFieldError('password')"
+            autocomplete="current-password"
+          />
+          <button
+            type="button"
+            class="password-toggle"
+            (click)="togglePasswordVisibility()"
+            aria-label="Toggle password visibility"
+          >
+            {{ showPassword ? '🙈' : '👁️' }}
+          </button>
+        </div>
+        <div class="field-error" *ngIf="hasFieldError('password')">
+          {{ getPasswordErrorMessage() }}
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        class="login-button"
+        [disabled]="isLoading || loginForm.invalid"
+      >
+        <span *ngIf="!isLoading">Login</span>
+        <span *ngIf="isLoading" class="loading-spinner">
+          <i class="spinner">⟳</i> Authenticating...
+        </span>
+      </button>
+    </form>
+
+    <!-- Footer -->
+    <div class="login-footer">
+      <p>&copy; 2025 Employee Portal. Powered by SAP ERP Integration.</p>
+    </div>
+  </div>
+</div>

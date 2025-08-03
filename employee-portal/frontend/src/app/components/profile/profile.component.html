@@ -1,0 +1,412 @@
+<div class="profile-container">
+  <!-- Header -->
+  <header class="profile-header">
+    <div class="header-content">
+      <div class="nav-section">
+        <button class="back-btn" (click)="goToDashboard()">
+          <i class="back-icon">←</i>
+          Back to Dashboard
+        </button>
+        <h1>Employee Profile</h1>
+      </div>
+      
+      <div class="header-actions">
+        <button class="action-btn" (click)="refreshProfile()" [disabled]="isLoading">
+          <i class="refresh-icon">🔄</i>
+          Refresh from SAP
+        </button>
+        <button class="action-btn secondary" (click)="editProfile()">
+          <i class="edit-icon">✏️</i>
+          Edit Profile
+        </button>
+        <button class="action-btn secondary" (click)="downloadProfile()">
+          <i class="download-icon">📥</i>
+          Download PDF
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="isLoading">
+    <div class="loading-card">
+      <div class="loading-spinner">
+        <i class="spinner">⟳</i>
+      </div>
+      <p>Loading employee profile from SAP ERP system...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-container" *ngIf="errorMessage && !isLoading">
+    <div class="error-card">
+      <i class="error-icon">⚠️</i>
+      <h3>Unable to Load Profile</h3>
+      <p>{{ errorMessage }}</p>
+      <button class="retry-btn" (click)="refreshProfile()">
+        <i class="retry-icon">🔄</i>
+        Retry
+      </button>
+    </div>
+  </div>
+
+  <!-- Profile Content -->
+  <main class="profile-main" *ngIf="employeeProfile && !isLoading">
+    
+    <!-- SAP Sync Status -->
+    <div class="sync-status">
+      <div class="sync-indicator">
+        <i class="sync-icon">🔗</i>
+        <span>Last synced with SAP ERP: {{ getLastSyncTime() }}</span>
+      </div>
+    </div>
+
+    <!-- Profile Overview Card -->
+    <div class="profile-overview">
+      <div class="overview-card">
+        <div class="profile-photo-section">
+          <div class="photo-container">
+            <img [src]="getProfileImageUrl()" [alt]="employeeProfile.name" class="profile-photo" />
+            <div class="photo-overlay">
+              <button class="change-photo-btn">
+                <i class="camera-icon">📷</i>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="profile-info-section">
+          <div class="basic-info">
+            <h2>{{ employeeProfile.name }}</h2>
+            <p class="employee-id">{{ employeeProfile.employeeId }}</p>
+            <p class="designation">{{ employeeProfile.designation }}</p>
+            <p class="department">{{ employeeProfile.department }}</p>
+            
+            <div class="status-badge" [style.background-color]="getStatusColor(employeeProfile.employmentStatus)">
+              {{ employeeProfile.employmentStatus }}
+            </div>
+          </div>
+          
+          <div class="quick-stats">
+            <div class="stat-item">
+              <span class="stat-label">Years of Service</span>
+              <span class="stat-value">{{ calculateYearsOfService() }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Reporting Manager</span>
+              <span class="stat-value">{{ employeeProfile.reportingManager }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Work Location</span>
+              <span class="stat-value">{{ employeeProfile.workLocation }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Cost Center</span>
+              <span class="stat-value">{{ employeeProfile.costCenter }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Details Grid -->
+    <div class="profile-details-grid">
+      
+      <!-- Personal Information -->
+      <div class="detail-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">👤</i>
+            <h3>Personal Information</h3>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="info-grid">
+            <div class="info-item">
+              <label>Full Name</label>
+              <span>{{ employeeProfile.name }}</span>
+            </div>
+            <div class="info-item">
+              <label>Date of Birth</label>
+              <span>{{ employeeProfile.dateOfBirth | date:'mediumDate' }}</span>
+            </div>
+            <div class="info-item">
+              <label>Gender</label>
+              <span>{{ employeeProfile.gender }}</span>
+            </div>
+            <div class="info-item">
+              <label>Marital Status</label>
+              <span>{{ employeeProfile.maritalStatus }}</span>
+            </div>
+            <div class="info-item">
+              <label>Nationality</label>
+              <span>{{ employeeProfile.nationality }}</span>
+            </div>
+            <div class="info-item">
+              <label>Blood Group</label>
+              <span>{{ employeeProfile.bloodGroup }}</span>
+            </div>
+            <div class="info-item">
+              <label>Father's Name</label>
+              <span>{{ employeeProfile.fatherName }}</span>
+            </div>
+            <div class="info-item">
+              <label>Mother's Name</label>
+              <span>{{ employeeProfile.motherName }}</span>
+            </div>
+            <div class="info-item" *ngIf="employeeProfile.spouseName">
+              <label>Spouse's Name</label>
+              <span>{{ employeeProfile.spouseName }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact Information -->
+      <div class="detail-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">📞</i>
+            <h3>Contact Information</h3>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="info-grid">
+            <div class="info-item">
+              <label>Email Address</label>
+              <span>{{ employeeProfile.email }}</span>
+            </div>
+            <div class="info-item">
+              <label>Phone Number</label>
+              <span>{{ employeeProfile.phoneNumber }}</span>
+            </div>
+            <div class="info-item" *ngIf="employeeProfile.alternatePhone">
+              <label>Alternate Phone</label>
+              <span>{{ employeeProfile.alternatePhone }}</span>
+            </div>
+            <div class="info-item">
+              <label>Emergency Contact</label>
+              <span>{{ employeeProfile.emergencyContactName }} ({{ employeeProfile.emergencyContactRelation }})</span>
+            </div>
+            <div class="info-item">
+              <label>Emergency Phone</label>
+              <span>{{ employeeProfile.emergencyContactPhone }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Professional Information -->
+      <div class="detail-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">💼</i>
+            <h3>Professional Details</h3>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="info-grid">
+            <div class="info-item">
+              <label>Employee Type</label>
+              <span>{{ employeeProfile.employeeType }}</span>
+            </div>
+            <div class="info-item">
+              <label>Job Title</label>
+              <span>{{ employeeProfile.jobTitle }}</span>
+            </div>
+            <div class="info-item">
+              <label>Joining Date</label>
+              <span>{{ employeeProfile.joiningDate | date:'mediumDate' }}</span>
+            </div>
+            <div class="info-item" *ngIf="employeeProfile.confirmationDate">
+              <label>Confirmation Date</label>
+              <span>{{ employeeProfile.confirmationDate | date:'mediumDate' }}</span>
+            </div>
+            <div class="info-item">
+              <label>Pay Grade</label>
+              <span>{{ employeeProfile.payGrade }}</span>
+            </div>
+            <div class="info-item">
+              <label>SAP Personnel Number</label>
+              <span>{{ employeeProfile.sapPersonnelNumber }}</span>
+            </div>
+            <div class="info-item">
+              <label>SAP Org Unit</label>
+              <span>{{ employeeProfile.sapOrgUnit }}</span>
+            </div>
+            <div class="info-item">
+              <label>SAP Position</label>
+              <span>{{ employeeProfile.sapPosition }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Salary Information -->
+      <div class="detail-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">💰</i>
+            <h3>Salary Information</h3>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="salary-breakdown">
+            <div class="salary-item">
+              <label>Basic Salary</label>
+              <span class="amount">{{ formatSalary(employeeProfile.basicSalary) }}</span>
+            </div>
+            <div class="salary-item">
+              <label>Gross Salary</label>
+              <span class="amount">{{ formatSalary(employeeProfile.grossSalary) }}</span>
+            </div>
+            <div class="salary-item total">
+              <label>Cost to Company (CTC)</label>
+              <span class="amount">{{ formatSalary(employeeProfile.ctc) }}</span>
+            </div>
+          </div>
+          
+          <div class="bank-details">
+            <h4>Bank Account Details</h4>
+            <div class="info-grid">
+              <div class="info-item">
+                <label>Bank Name</label>
+                <span>{{ employeeProfile.salaryAccount.bankName }}</span>
+              </div>
+              <div class="info-item">
+                <label>Account Number</label>
+                <span>{{ employeeProfile.salaryAccount.accountNumber }}</span>
+              </div>
+              <div class="info-item">
+                <label>IFSC Code</label>
+                <span>{{ employeeProfile.salaryAccount.ifscCode }}</span>
+              </div>
+              <div class="info-item">
+                <label>Branch</label>
+                <span>{{ employeeProfile.salaryAccount.branchName }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Address Information -->
+      <div class="detail-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">🏠</i>
+            <h3>Address Information</h3>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="address-section">
+            <h4>Current Address</h4>
+            <div class="address-details">
+              <p>{{ employeeProfile.currentAddress.addressLine1 }}</p>
+              <p *ngIf="employeeProfile.currentAddress.addressLine2">{{ employeeProfile.currentAddress.addressLine2 }}</p>
+              <p>{{ employeeProfile.currentAddress.city }}, {{ employeeProfile.currentAddress.state }} - {{ employeeProfile.currentAddress.postalCode }}</p>
+              <p>{{ employeeProfile.currentAddress.country }}</p>
+            </div>
+          </div>
+          
+          <div class="address-section">
+            <h4>Permanent Address</h4>
+            <div class="address-details">
+              <p>{{ employeeProfile.permanentAddress.addressLine1 }}</p>
+              <p *ngIf="employeeProfile.permanentAddress.addressLine2">{{ employeeProfile.permanentAddress.addressLine2 }}</p>
+              <p>{{ employeeProfile.permanentAddress.city }}, {{ employeeProfile.permanentAddress.state }} - {{ employeeProfile.permanentAddress.postalCode }}</p>
+              <p>{{ employeeProfile.permanentAddress.country }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Education Background -->
+      <div class="detail-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">🎓</i>
+            <h3>Education Background</h3>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="education-list">
+            <div class="education-item" *ngFor="let edu of employeeProfile.education">
+              <div class="education-header">
+                <h4>{{ edu.degree }}</h4>
+                <span class="education-year">{{ edu.yearOfPassing }}</span>
+              </div>
+              <p class="education-institution">{{ edu.institution }}</p>
+              <p class="education-details" *ngIf="edu.specialization">Specialization: {{ edu.specialization }}</p>
+              <p class="education-details">Percentage: {{ edu.percentage }}%</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Skills & Certifications -->
+      <div class="detail-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">🏆</i>
+            <h3>Skills & Certifications</h3>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="skills-section">
+            <h4>Skills</h4>
+            <div class="skills-tags">
+              <span class="skill-tag" *ngFor="let skill of employeeProfile.skills">{{ skill }}</span>
+            </div>
+          </div>
+          
+          <div class="certifications-section" *ngIf="employeeProfile.certifications.length > 0">
+            <h4>Certifications</h4>
+            <div class="certification-list">
+              <div class="certification-item" *ngFor="let cert of employeeProfile.certifications">
+                <div class="certification-header">
+                  <h5>{{ cert.name }}</h5>
+                  <span class="certification-date">{{ cert.issueDate | date:'MMM yyyy' }}</span>
+                </div>
+                <p class="certification-org">{{ cert.issuingOrganization }}</p>
+                <p class="certification-id" *ngIf="cert.credentialId">ID: {{ cert.credentialId }}</p>
+                <p class="certification-expiry" *ngIf="cert.expiryDate">Expires: {{ cert.expiryDate | date:'MMM yyyy' }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Government IDs -->
+      <div class="detail-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">🆔</i>
+            <h3>Government IDs</h3>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="info-grid">
+            <div class="info-item">
+              <label>PAN Number</label>
+              <span>{{ employeeProfile.panNumber }}</span>
+            </div>
+            <div class="info-item">
+              <label>Aadhar Number</label>
+              <span>{{ employeeProfile.aadharNumber }}</span>
+            </div>
+            <div class="info-item" *ngIf="employeeProfile.passportNumber">
+              <label>Passport Number</label>
+              <span>{{ employeeProfile.passportNumber }}</span>
+            </div>
+            <div class="info-item" *ngIf="employeeProfile.drivingLicenseNumber">
+              <label>Driving License</label>
+              <span>{{ employeeProfile.drivingLicenseNumber }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>

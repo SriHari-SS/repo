@@ -1,0 +1,442 @@
+<div class="dashboard-container">
+  <!-- Top Navigation Bar - Modern Aligned Header -->
+  <header class="top-nav">
+    <div class="nav-container">
+      <!-- Left Section: Brand and App Launcher -->
+      <div class="nav-left">
+        <div class="app-launcher">
+          <button class="app-launcher-btn" title="App Launcher">
+            <i class="icon">⚏</i>
+          </button>
+        </div>
+        <div class="brand-section">
+          <div class="logo">
+            <img src="assets/images/sap-logo.png" alt="SAP" class="sap-logo" onerror="this.style.display='none'">
+            <span class="logo-text">Employee Portal</span>
+          </div>
+          <div class="connection-status">
+            <span class="status-indicator active"></span>
+            <span class="status-text">SAP Connected</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Section: Navigation Menu -->
+      <nav class="nav-center">
+        <div class="nav-menu">
+          <a routerLink="/dashboard" class="nav-item active" routerLinkActive="active">
+            <i class="nav-icon">🏠</i>
+            <span class="nav-text">Dashboard</span>
+          </a>
+          <a [routerLink]="['/profile', employee?.employeeId || '']" class="nav-item" routerLinkActive="active">
+            <i class="nav-icon">👤</i>
+            <span class="nav-text">My Profile</span>
+          </a>
+          <a [routerLink]="['/leave-management', employee?.employeeId || '']" class="nav-item" routerLinkActive="active">
+            <i class="nav-icon">🏖️</i>
+            <span class="nav-text">Leave</span>
+          </a>
+          <a [routerLink]="['/payslip', employee?.employeeId || '']" class="nav-item" routerLinkActive="active">
+            <i class="nav-icon">💰</i>
+            <span class="nav-text">Payslip</span>
+          </a>
+          <a routerLink="/attendance" class="nav-item" routerLinkActive="active">
+            <i class="nav-icon">📊</i>
+            <span class="nav-text">Attendance</span>
+          </a>
+        </div>
+      </nav>
+
+      <!-- Right Section: Search, Actions, and User Profile -->
+      <div class="nav-right">
+        <!-- Global Search -->
+        <div class="search-container">
+          <div class="search-box">
+            <i class="search-icon">🔍</i>
+            <input type="text" 
+                   placeholder="Search employees, documents..." 
+                   class="search-input"
+                   [(ngModel)]="searchQuery"
+                   (keyup.enter)="performSearch()">
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+          <button class="action-btn" title="Notifications" [class.has-badge]="notifications > 0">
+            <i class="icon">🔔</i>
+            <span class="notification-badge" *ngIf="notifications > 0">{{ notifications }}</span>
+          </button>
+          <button class="action-btn" title="Messages">
+            <i class="icon">💬</i>
+          </button>
+          <button class="action-btn" title="Settings">
+            <i class="icon">⚙️</i>
+          </button>
+          <button class="action-btn" title="Help & Support">
+            <i class="icon">❓</i>
+          </button>
+        </div>
+
+        <!-- User Profile Section -->
+        <div class="user-section" *ngIf="employee">
+          <div class="user-info">
+            <div class="user-details">
+              <span class="user-name">{{ employee.name }}</span>
+              <span class="user-role">{{ employee.designation }}</span>
+              <span class="user-id">{{ employee.employeeId }}</span>
+            </div>
+            <div class="user-avatar">
+              <img [src]="getProfileImage()" 
+                   [alt]="employee.name" 
+                   class="avatar-image"
+                   onerror="this.src='assets/images/default-avatar.png'">
+              <div class="online-indicator"></div>
+            </div>
+          </div>
+          
+          <!-- User Dropdown Menu -->
+          <div class="user-menu">
+            <button class="user-menu-trigger" 
+                    (click)="toggleUserMenu()"
+                    [class.active]="showUserMenu">
+              <i class="icon">▼</i>
+            </button>
+            
+            <div class="user-dropdown" *ngIf="showUserMenu" [@slideDown]>
+              <div class="dropdown-header">
+                <div class="dropdown-user-info">
+                  <img [src]="getProfileImage()" [alt]="employee.name" class="dropdown-avatar">
+                  <div class="dropdown-details">
+                    <span class="dropdown-name">{{ employee.name }}</span>
+                    <span class="dropdown-email">{{ employee.email }}</span>
+                    <span class="dropdown-dept">{{ employee.department }}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="dropdown-menu">
+                <a [routerLink]="['/profile', employee.employeeId]" class="dropdown-item">
+                  <i class="item-icon">👤</i>
+                  <span>View Profile</span>
+                </a>
+                <a routerLink="/settings" class="dropdown-item">
+                  <i class="item-icon">⚙️</i>
+                  <span>Account Settings</span>
+                </a>
+                <a routerLink="/preferences" class="dropdown-item">
+                  <i class="item-icon">🎨</i>
+                  <span>Preferences</span>
+                </a>
+                <div class="dropdown-separator"></div>
+                <button class="dropdown-item logout-item" (click)="logout()">
+                  <i class="item-icon">🚪</i>
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Dashboard Content -->
+  <main class="dashboard-main">
+    <!-- Welcome Banner -->
+    <section class="welcome-banner">
+      <div class="banner-content">
+        <div class="welcome-text">
+          <h2>{{ getGreeting() }}, {{ employee?.name }}</h2>
+          <p class="date-time">{{ currentTime | date:'EEEE, MMMM d, y' }} • {{ currentTime | date:'shortTime' }}</p>
+        </div>
+        <div class="quick-stats">
+          <div class="stat-item">
+            <span class="stat-number">{{ leaveBalance }}</span>
+            <span class="stat-label">Leave Days</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">{{ pendingTasks }}</span>
+            <span class="stat-label">Pending Tasks</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">{{ currentProject }}</span>
+            <span class="stat-label">Active Project</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dashboard Grid -->
+    <div class="dashboard-grid">
+      
+      <!-- Employee Profile Card -->
+      <div class="grid-card profile-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">👤</i>
+            <h3>My Profile</h3>
+          </div>
+          <button class="card-action" (click)="navigateToProfile()">View Full Profile</button>
+        </div>
+        <div class="card-content" *ngIf="employee">
+          <div class="profile-summary">
+            <div class="profile-image">
+              <img [src]="getProfileImage()" [alt]="employee.name" />
+            </div>
+            <div class="profile-details">
+              <h4>{{ employee.name }}</h4>
+              <p class="employee-id">{{ employee.employeeId }}</p>
+              <p class="designation">{{ employee.designation }}</p>
+              <p class="department">{{ employee.department }}</p>
+              <p class="email">{{ employee.email }}</p>
+            </div>
+          </div>
+          <div class="profile-stats">
+            <div class="stat">
+              <span class="label">Years of Service</span>
+              <span class="value">{{ yearsOfService }}</span>
+            </div>
+            <div class="stat">
+              <span class="label">Manager</span>
+              <span class="value">{{ managerName }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Organization Hierarchy -->
+      <div class="grid-card hierarchy-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">🏢</i>
+            <h3>Organization</h3>
+          </div>
+          <button class="card-action" (click)="viewOrgChart()">View Org Chart</button>
+        </div>
+        <div class="card-content">
+          <div class="hierarchy-tree">
+            <div class="hierarchy-level manager">
+              <div class="person-node">
+                <img [src]="getManagerImage()" alt="Manager" />
+                <span>{{ managerName }}</span>
+                <small>Manager</small>
+              </div>
+            </div>
+            <div class="hierarchy-level current">
+              <div class="person-node current-user">
+                <img [src]="getProfileImage()" [alt]="employee?.name" />
+                <span>{{ employee?.name }}</span>
+                <small>{{ employee?.designation }}</small>
+              </div>
+            </div>
+            <div class="hierarchy-level reports" *ngIf="teamMembers.length > 0">
+              <div class="person-node" *ngFor="let member of teamMembers">
+                <img [src]="getTeamMemberImage(member.name)" [alt]="member.name" />
+                <span>{{ member.name }}</span>
+                <small>{{ member.role }}</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leave Management -->
+      <div class="grid-card leave-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">🏖️</i>
+            <h3>Leave Management</h3>
+          </div>
+          <button class="card-action" (click)="navigateToLeaveRequest()">Request Leave</button>
+        </div>
+        <div class="card-content">
+          <div class="leave-balance">
+            <div class="balance-item">
+              <span class="balance-type">Annual Leave</span>
+              <div class="balance-visual">
+                <div class="balance-bar">
+                  <div class="balance-used" [style.width.%]="getLeaveUsagePercentage('annual')"></div>
+                </div>
+                <span class="balance-text">{{ annualLeaveUsed }}/{{ annualLeaveTotal }}</span>
+              </div>
+            </div>
+            <div class="balance-item">
+              <span class="balance-type">Sick Leave</span>
+              <div class="balance-visual">
+                <div class="balance-bar">
+                  <div class="balance-used" [style.width.%]="getLeaveUsagePercentage('sick')"></div>
+                </div>
+                <span class="balance-text">{{ sickLeaveUsed }}/{{ sickLeaveTotal }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="recent-leaves">
+            <h5>Recent Applications</h5>
+            <div class="leave-item" *ngFor="let leave of recentLeaves">
+              <div class="leave-dates">{{ leave.startDate }} - {{ leave.endDate }}</div>
+              <span class="leave-status" [class]="'status-' + leave.status">{{ leave.status }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payslip & Finance -->
+      <div class="grid-card payslip-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">💰</i>
+            <h3>Payslip & Finance</h3>
+          </div>
+          <button class="card-action" (click)="navigateToPayslip()">View Payslip</button>
+        </div>
+        <div class="card-content">
+          <div class="salary-summary">
+            <div class="current-salary">
+              <span class="amount">{{ currentSalary | currency:'INR':'symbol':'1.0-0' }}</span>
+              <span class="period">This Month</span>
+            </div>
+            <div class="salary-breakdown">
+              <div class="breakdown-item">
+                <span class="label">Basic</span>
+                <span class="value">{{ basicSalary | currency:'INR':'symbol':'1.0-0' }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="label">Allowances</span>
+                <span class="value">{{ allowances | currency:'INR':'symbol':'1.0-0' }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="label">Deductions</span>
+                <span class="value">-{{ deductions | currency:'INR':'symbol':'1.0-0' }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="payslip-actions">
+            <button class="action-btn" (click)="downloadPayslip()">
+              <i class="btn-icon">�</i>
+              Download Latest
+            </button>
+            <button class="action-btn" (click)="viewSalaryHistory()">
+              <i class="btn-icon">📊</i>
+              Salary History
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Projects & Performance -->
+      <div class="grid-card projects-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">�</i>
+            <h3>Projects & Performance</h3>
+          </div>
+          <button class="card-action" (click)="viewAllProjects()">View All</button>
+        </div>
+        <div class="card-content">
+          <div class="current-projects">
+            <div class="project-item" *ngFor="let project of currentProjects">
+              <div class="project-info">
+                <h5>{{ project.name }}</h5>
+                <p class="project-client">{{ project.client }}</p>
+                <div class="project-progress">
+                  <div class="progress-bar">
+                    <div class="progress-fill" [style.width.%]="project.progress"></div>
+                  </div>
+                  <span class="progress-text">{{ project.progress }}%</span>
+                </div>
+              </div>
+              <div class="project-status" [class]="'status-' + project.status">
+                {{ project.status }}
+              </div>
+            </div>
+          </div>
+          <div class="performance-metrics">
+            <h5>Performance Overview</h5>
+            <div class="metrics-grid">
+              <div class="metric">
+                <span class="metric-value">{{ performanceScore }}</span>
+                <span class="metric-label">Overall Score</span>
+              </div>
+              <div class="metric">
+                <span class="metric-value">{{ tasksCompleted }}</span>
+                <span class="metric-label">Tasks Done</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="grid-card actions-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">⚡</i>
+            <h3>Quick Actions</h3>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="actions-grid">
+            <button class="quick-action" (click)="markAttendance()">
+              <i class="action-icon">⏰</i>
+              <span>Mark Attendance</span>
+            </button>
+            <button class="quick-action" (click)="submitTimesheet()">
+              <i class="action-icon">📝</i>
+              <span>Submit Timesheet</span>
+            </button>
+            <button class="quick-action" (click)="navigateToLeaveManagement()">
+              <i class="action-icon">🏖️</i>
+              <span>Leave Management</span>
+            </button>
+            <button class="quick-action" (click)="navigateToPaySlip()">
+              <i class="action-icon">💰</i>
+              <span>Pay Slip</span>
+            </button>
+            <button class="quick-action" (click)="bookMeetingRoom()">
+              <i class="action-icon">🏢</i>
+              <span>Book Room</span>
+            </button>
+            <button class="quick-action" (click)="viewDirectory()">
+              <i class="action-icon">📞</i>
+              <span>Employee Directory</span>
+            </button>
+            <button class="quick-action" (click)="accessTraining()">
+              <i class="action-icon">🎓</i>
+              <span>Training</span>
+            </button>
+            <button class="quick-action" (click)="viewPolicies()">
+              <i class="action-icon">📋</i>
+              <span>HR Policies</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity & Notifications -->
+      <div class="grid-card activity-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="card-icon">🔔</i>
+            <h3>Recent Activity</h3>
+          </div>
+          <button class="card-action" (click)="viewAllActivity()">View All</button>
+        </div>
+        <div class="card-content">
+          <div class="activity-list">
+            <div class="activity-item" *ngFor="let activity of recentActivity">
+              <div class="activity-icon" [class]="'icon-' + activity.type">
+                <i>{{ getActivityIcon(activity.type) }}</i>
+              </div>
+              <div class="activity-details">
+                <p class="activity-text">{{ activity.message }}</p>
+                <span class="activity-time">{{ getRelativeTime(activity.timestamp) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
