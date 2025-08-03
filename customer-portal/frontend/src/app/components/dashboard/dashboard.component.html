@@ -117,7 +117,7 @@
                 </div>
                 
                 <!-- Empty State for Recent Inquiries -->
-                <div *ngIf="!dashboardData()?.recentInquiries || dashboardData()?.recentInquiries.length === 0" class="empty-state">
+                <div *ngIf="!dashboardData()?.recentInquiries || (dashboardData()?.recentInquiries?.length ?? 0) === 0" class="empty-state">
                   <div class="empty-icon">📋</div>
                   <h4>No Recent Inquiries</h4>
                   <p>You haven't made any inquiries recently. Start by submitting a new product inquiry.</p>
@@ -158,7 +158,7 @@
                 </div>
                 
                 <!-- Empty State for Recent Sales Orders -->
-                <div *ngIf="!dashboardData()?.recentSalesOrders || dashboardData()?.recentSalesOrders.length === 0" class="empty-state">
+                <div *ngIf="!dashboardData()?.recentSalesOrders || (dashboardData()?.recentSalesOrders?.length ?? 0) === 0" class="empty-state">
                   <div class="empty-icon">🛒</div>
                   <h4>No Recent Orders</h4>
                   <p>No sales orders found. Place your first order to see it here.</p>
@@ -201,7 +201,7 @@
                 </div>
                 
                 <!-- Empty State for Recent Deliveries -->
-                <div *ngIf="!dashboardData()?.recentDeliveries || dashboardData()?.recentDeliveries.length === 0" class="empty-state">
+                <div *ngIf="!dashboardData()?.recentDeliveries || (dashboardData()?.recentDeliveries?.length ?? 0) === 0" class="empty-state">
                   <div class="empty-icon">🚚</div>
                   <h4>No Recent Deliveries</h4>
                   <p>No deliveries to track. Your shipments will appear here once dispatched.</p>
